@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -120,18 +121,108 @@ func getBoardHandler(l *zerolog.Logger, datastore getBoardDatastore) http.Handle
 	}
 }
 
-type createHoldsOnBoardDatastore interface{}
+type createHoldsOnBoardDatastore interface {
+	CreateHolds(boardID uuid.UUID, holds []*db.Hold) error
+}
 
-func createHoldsOnBoardHandler(_ *zerolog.Logger, _ createHoldsOnBoardDatastore) http.HandlerFunc {
+func createHoldsOnBoardHandler(l *zerolog.Logger, datastore createHoldsOnBoardDatastore) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusNotImplemented)
+		logger := l.With().Str("requestMethod", r.Method).Str("url", r.URL.String()).Logger()
+
+		params := httprouter.ParamsFromContext(r.Context())
+		idStr := params.ByName("board_id")
+
+		id, err := uuid.Parse(idStr)
+		if err != nil {
+			logger.Error().Err(err).Str("board_id", idStr).Msg("invalid board ID")
+			errorResponse(w, http.StatusBadRequest, "invalid board ID")
+
+			return
+		}
+
+		var input struct {
+			Holds []struct {
+				X float64 `json:"x"`
+				Y float64 `json:"y"`
+			} `json:"holds"`
+		}
+
+		err = json.NewDecoder(r.Body).Decode(&input)
+		if err != nil {
+			logger.Error().Err(err).Msg("failed to read JSON")
+			errorResponse(w, http.StatusBadRequest, "invalid JSON")
+
+			return
+		}
+
+		var holds []*db.Hold
+		for _, h := range input.Holds {
+			holds = append(holds, &db.Hold{
+				BoardID: id,
+				X:       h.X,
+				Y:       h.Y,
+			})
+		}
+
+		err = datastore.CreateHolds(id, holds)
+		if err != nil {
+			switch {
+			case errors.Is(err, db.ErrBoardNotFound):
+				logger.Error().Err(err).Msg("board not found")
+				errorResponse(w, http.StatusNotFound, "board not found")
+
+				return
+			default:
+				logger.Error().Err(err).Msg("failed to create holds")
+				errorResponse(w, http.StatusInternalServerError, "unable to create holds")
+
+				return
+			}
+		}
+
+		err = writeJSON(w, http.StatusCreated, envelope{"holds": holds}, nil)
+		if err != nil {
+			logger.Error().Err(err).Msg("failed to write JSON response")
+			errorResponse(w, http.StatusInternalServerError, "the server encountered an error while processing your request")
+
+			return
+		}
 	}
 }
 
-type getHoldsOnBoardDatastore interface{}
+type getHoldsOnBoardDatastore interface {
+	GetHolds(boardID uuid.UUID) ([]db.Hold, error)
+}
 
-func getHoldsOnBoardHandler(_ *zerolog.Logger, _ getHoldsOnBoardDatastore) http.HandlerFunc {
+func getHoldsOnBoardHandler(l *zerolog.Logger, datastore getHoldsOnBoardDatastore) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusNotImplemented)
+		logger := l.With().Str("requestMethod", r.Method).Str("url", r.URL.String()).Logger()
+
+		params := httprouter.ParamsFromContext(r.Context())
+		idStr := params.ByName("board_id")
+
+		id, err := uuid.Parse(idStr)
+		if err != nil {
+			logger.Error().Err(err).Str("board_id", idStr).Msg("invalid board ID")
+			errorResponse(w, http.StatusBadRequest, "invalid board ID")
+
+			return
+		}
+
+		holds, err := datastore.GetHolds(id)
+		if err != nil {
+			logger.Error().Err(err).Msg("failed to get holds")
+			errorResponse(w, http.StatusInternalServerError, "unable to get holds")
+
+			return
+		}
+
+		err = writeJSON(w, http.StatusCreated, envelope{"holds": holds, "boardID": id}, nil)
+		if err != nil {
+			logger.Error().Err(err).Msg("failed to write JSON response")
+			errorResponse(w, http.StatusInternalServerError, "the server encountered an error while processing your request")
+
+			return
+		}
 	}
 }

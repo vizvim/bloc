@@ -14,7 +14,8 @@ type DB struct {
 }
 
 func Connect(user string, password string, host string) (*DB, error) {
-	db, err := sql.Open("postgres", "postgres://user:password@localhost/bloc?sslmode=disable")
+	db, err := sql.Open("postgres", fmt.Sprintf("postgres://%s:%s@%s/bloc?sslmode=disable", user, password, host))
+	// db, err := sql.Open("postgres", "postgres://user:password@localhost/bloc?sslmode=disable")
 	if err != nil {
 		return nil, fmt.Errorf("error opening database connection: %v", err)
 	}

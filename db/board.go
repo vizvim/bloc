@@ -3,10 +3,9 @@ package db
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"time"
-
-	"errors"
 
 	"github.com/google/uuid"
 	"github.com/vizvim/board/validator"
@@ -18,8 +17,8 @@ type Board struct {
 	ID        uuid.UUID `json:"id"`
 	Name      string    `json:"name"`
 	Image     []byte    `json:"image"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	CreatedAt time.Time `json:"createdAt"`
+	UpdatedAt time.Time `json:"updatedAt"`
 	Version   int       `json:"version"`
 }
 
@@ -56,11 +55,13 @@ func (d *DB) GetBoard(id uuid.UUID) (Board, error) {
 	query := `SELECT id, name, image, created_at, updated_at, version FROM boards WHERE id = $1`
 
 	var board Board
+
 	err := d.QueryRow(query, id).Scan(&board.ID, &board.Name, &board.Image, &board.CreatedAt, &board.UpdatedAt, &board.Version)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return Board{}, ErrBoardNotFound
 		}
+
 		return Board{}, fmt.Errorf("error getting board: %v", err)
 	}
 

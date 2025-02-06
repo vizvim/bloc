@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 )
 
@@ -10,7 +11,7 @@ type envelope map[string]any
 func writeJSON(w http.ResponseWriter, status int, data envelope, headers http.Header) error {
 	js, err := json.MarshalIndent(data, "", "\t")
 	if err != nil {
-		return err
+		return fmt.Errorf("could not encode JSON: %v", err)
 	}
 
 	js = append(js, '\n')
@@ -21,7 +22,7 @@ func writeJSON(w http.ResponseWriter, status int, data envelope, headers http.He
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	w.Write(js)
+	_, _ = w.Write(js)
 
 	return nil
 }
@@ -31,7 +32,7 @@ func errorResponse(w http.ResponseWriter, status int, message any) {
 
 	err := writeJSON(w, status, env, nil)
 	if err != nil {
-		w.WriteHeader(500)
+		w.WriteHeader(http.StatusInternalServerError)
 	}
 }
 

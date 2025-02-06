@@ -95,7 +95,11 @@ func (s *Server) Start() {
 
 	go func() {
 		s.logger.Info().Str("address", s.httpServer.Addr).Msg("server listening")
-		s.httpServer.ListenAndServe()
+
+		err := s.httpServer.ListenAndServe()
+		if err != nil {
+			s.logger.Error().Err(err).Msg("server error")
+		}
 	}()
 
 	<-stop
@@ -104,5 +108,9 @@ func (s *Server) Start() {
 
 	ctx, cancel := context.WithTimeout(context.Background(), s.shutdownTimeout)
 	defer cancel()
-	s.httpServer.Shutdown(ctx)
+
+	err := s.httpServer.Shutdown(ctx)
+	if err != nil {
+		s.logger.Error().Err(err).Msg("server shutdown error")
+	}
 }
