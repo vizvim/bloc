@@ -1,13 +1,8 @@
+version: "2"
 run:
-  go: "1.21"
-
-linters-settings:
-  forbidigo:
-    forbid:
-      - 'log\.Print.*'
-
+  go: "1.24"
 linters:
-  disable-all: true
+  default: none
   enable:
     - bidichk
     - errcheck
@@ -17,10 +12,7 @@ linters:
     - gocheckcompilerdirectives
     - goconst
     - gocritic
-    - gofumpt
-    - goimports
     - gosec
-    - gosimple
     - ineffassign
     - makezero
     - misspell
@@ -29,11 +21,34 @@ linters:
     - prealloc
     - revive
     - staticcheck
-    - tenv
     - thelper
-    - typecheck
     - unused
     - usestdlibvars
     - whitespace
     - wrapcheck
     - wsl
+  settings:
+    forbidigo:
+      forbid:
+        - pattern: log\.Print.*
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
+formatters:
+  enable:
+    - gofumpt
+    - goimports
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$

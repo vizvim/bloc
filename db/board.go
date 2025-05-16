@@ -67,3 +67,32 @@ func (d *DB) GetBoard(id uuid.UUID) (Board, error) {
 
 	return board, nil
 }
+
+func (d *DB) GetAllBoards(ctx context.Context) ([]Board, error) {
+	query := `SELECT id, name, image, created_at, updated_at, version FROM boards`
+
+	var boards []Board
+
+	rows, err := d.QueryContext(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("error getting boards: %v", err)
+	}
+
+	defer rows.Close()
+
+	for rows.Next() {
+		var board Board
+		err := rows.Scan(&board.ID, &board.Name, &board.Image, &board.CreatedAt, &board.UpdatedAt, &board.Version)
+		if err != nil {
+			return nil, fmt.Errorf("error scanning board: %v", err)
+		}
+
+		boards = append(boards, board)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating over boards: %v", err)
+	}
+
+	return boards, nil
+}

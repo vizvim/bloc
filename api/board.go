@@ -121,6 +121,32 @@ func getBoardHandler(l *zerolog.Logger, datastore getBoardDatastore) http.Handle
 	}
 }
 
+type getAllBoardsDatastore interface {
+	GetAllBoards(ctx context.Context) ([]db.Board, error)
+}
+
+func getAllBoardsHandler(l *zerolog.Logger, datastore getAllBoardsDatastore) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		logger := l.With().Str("requestMethod", r.Method).Str("url", r.URL.String()).Logger()
+
+		boards, err := datastore.GetAllBoards(r.Context())
+		if err != nil {
+			logger.Error().Err(err).Msg("failed to get all boards")
+			errorResponse(w, http.StatusInternalServerError, "the server encountered an error while processing your request")
+
+			return
+		}
+
+		err = writeJSON(w, http.StatusOK, envelope{"boards": boards}, nil)
+		if err != nil {
+			logger.Error().Err(err).Msg("failed to write JSON response")
+			errorResponse(w, http.StatusInternalServerError, "the server encountered an error while processing your request")
+
+			return
+		}
+	}
+}
+
 type createHoldsOnBoardDatastore interface {
 	CreateHolds(boardID uuid.UUID, holds []*db.Hold) error
 }
