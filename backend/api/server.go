@@ -87,6 +87,7 @@ func NewServer(l *zerolog.Logger, db *db.DB, opts ...ServerOption) *Server {
 			header.Set("Access-Control-Max-Age", "3600")
 			header.Set("Access-Control-Allow-Credentials", "true")
 		}
+
 		w.WriteHeader(http.StatusNoContent)
 	})
 

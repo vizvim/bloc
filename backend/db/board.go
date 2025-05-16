@@ -59,6 +59,7 @@ func (d *DB) GetBoard(id uuid.UUID) (*Board, error) {
 	if err == sql.ErrNoRows {
 		return nil, ErrBoardNotFound
 	}
+
 	if err != nil {
 		return nil, fmt.Errorf("error querying board: %v", err)
 	}
@@ -80,6 +81,7 @@ func (d *DB) GetAllBoards(ctx context.Context) ([]Board, error) {
 
 	for rows.Next() {
 		var board Board
+
 		err := rows.Scan(&board.ID, &board.Name, &board.Image, &board.CreatedAt, &board.UpdatedAt, &board.Version)
 		if err != nil {
 			return nil, fmt.Errorf("error scanning board: %v", err)

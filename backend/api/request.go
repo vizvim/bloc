@@ -10,7 +10,7 @@ import (
 )
 
 func readJSON(w http.ResponseWriter, r *http.Request, dst any) error {
-	maxBytes := 20_048_576
+	maxBytes := 25 << 20 // 25MB
 	r.Body = http.MaxBytesReader(w, r.Body, int64(maxBytes))
 
 	dec := json.NewDecoder(r.Body)

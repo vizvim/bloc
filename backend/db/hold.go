@@ -82,6 +82,7 @@ func (d *DB) CreateHolds(boardID uuid.UUID, holds []*Hold) error {
 			if rollbackErr != nil {
 				return fmt.Errorf("error rolling back transaction: %v", rollbackErr)
 			}
+
 			return fmt.Errorf("error marshaling vertices: %v", err)
 		}
 
@@ -120,6 +121,7 @@ func (d *DB) GetHolds(boardID uuid.UUID) ([]Hold, error) {
 
 	for rows.Next() {
 		var hold Hold
+
 		var verticesJSON []byte
 
 		err := rows.Scan(&hold.ID, &hold.BoardID, &verticesJSON, &hold.CreatedAt, &hold.UpdatedAt)
@@ -145,7 +147,7 @@ func (d *DB) GetHolds(boardID uuid.UUID) ([]Hold, error) {
 
 func (d *DB) DeleteHold(holdID uuid.UUID) error {
 	_, err := d.Exec(`DELETE FROM holds WHERE id = $1`, holdID)
-	return err
+	return fmt.Errorf("error deleting hold: %v", err)
 }
 
 func (d *DB) UpdateHolds(boardID uuid.UUID, holds []*Hold) error {
@@ -173,7 +175,11 @@ func (d *DB) UpdateHolds(boardID uuid.UUID, holds []*Hold) error {
 		RETURNING id, created_at, updated_at
 	`)
 	if err != nil {
-		tx.Rollback()
+		rollbackErr := tx.Rollback()
+		if rollbackErr != nil {
+			return fmt.Errorf("error rolling back transaction: %v", rollbackErr)
+		}
+
 		return fmt.Errorf("error preparing update statement: %v", err)
 	}
 	defer updateStmt.Close()
@@ -184,7 +190,10 @@ func (d *DB) UpdateHolds(boardID uuid.UUID, holds []*Hold) error {
 		RETURNING id, created_at, updated_at
 	`)
 	if err != nil {
-		tx.Rollback()
+		if rollbackErr := tx.Rollback(); rollbackErr != nil {
+			return fmt.Errorf("error rolling back transaction: %v", rollbackErr)
+		}
+
 		return fmt.Errorf("error preparing insert statement: %v", err)
 	}
 	defer insertStmt.Close()
@@ -193,7 +202,10 @@ func (d *DB) UpdateHolds(boardID uuid.UUID, holds []*Hold) error {
 		// Convert vertices to JSON before storing
 		verticesJSON, err := json.Marshal(hold.Vertices)
 		if err != nil {
-			tx.Rollback()
+			if rollbackErr := tx.Rollback(); rollbackErr != nil {
+				return fmt.Errorf("error rolling back transaction: %v: %v", rollbackErr, err)
+			}
+
 			return fmt.Errorf("error marshaling vertices: %v", err)
 		}
 
@@ -205,7 +217,10 @@ func (d *DB) UpdateHolds(boardID uuid.UUID, holds []*Hold) error {
 				boardID,
 			).Scan(&hold.ID, &hold.CreatedAt, &hold.UpdatedAt)
 			if err != nil {
-				tx.Rollback()
+				if rollbackErr := tx.Rollback(); rollbackErr != nil {
+					return fmt.Errorf("error rolling back transaction: %v: %v", rollbackErr, err)
+				}
+
 				return fmt.Errorf("error updating hold: %v", err)
 			}
 		} else {
@@ -215,14 +230,16 @@ func (d *DB) UpdateHolds(boardID uuid.UUID, holds []*Hold) error {
 				verticesJSON,
 			).Scan(&hold.ID, &hold.CreatedAt, &hold.UpdatedAt)
 			if err != nil {
-				tx.Rollback()
+				if rollbackErr := tx.Rollback(); rollbackErr != nil {
+					return fmt.Errorf("error rolling back transaction: %v: %v", rollbackErr, err)
+				}
+
 				return fmt.Errorf("error creating hold: %v", err)
 			}
 		}
 	}
 
-	err = tx.Commit()
-	if err != nil {
+	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("error committing transaction: %v", err)
 	}
 

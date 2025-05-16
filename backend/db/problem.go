@@ -47,7 +47,8 @@ func (d *DB) CreateProblem(boardID uuid.UUID, problem *Problem, holds []ProblemH
 	if err != nil {
 		return fmt.Errorf("error beginning transaction: %v", err)
 	}
-	defer tx.Rollback()
+
+	defer tx.Rollback() //nolint:errcheck
 
 	// Insert problem
 	err = tx.QueryRow(`
@@ -97,12 +98,15 @@ func (d *DB) GetProblems(boardID uuid.UUID) ([]Problem, error) {
 	defer rows.Close()
 
 	var problems []Problem
+
 	for rows.Next() {
 		var p Problem
+
 		err := rows.Scan(&p.ID, &p.BoardID, &p.Name, &p.Status, &p.CreatedAt)
 		if err != nil {
 			return nil, fmt.Errorf("error scanning problem: %v", err)
 		}
+
 		problems = append(problems, p)
 	}
 
@@ -124,6 +128,7 @@ func (d *DB) GetProblem(boardID, problemID uuid.UUID) (*Problem, error) {
 	if err == sql.ErrNoRows {
 		return nil, ErrProblemNotFound
 	}
+
 	if err != nil {
 		return nil, fmt.Errorf("error querying problem: %v", err)
 	}
@@ -149,20 +154,24 @@ func (d *DB) GetProblemHolds(problemID uuid.UUID) ([]ProblemHold, error) {
 	defer rows.Close()
 
 	var holds []ProblemHold
+
 	for rows.Next() {
 		var h ProblemHold
+
 		var verticesJSON []byte
+
 		err := rows.Scan(&h.ID, &h.ProblemID, &h.HoldID, &h.Type, &verticesJSON)
 		if err != nil {
 			return nil, fmt.Errorf("error scanning problem hold: %v", err)
 		}
 
-		// Parse vertices from JSON
 		var vertices []Point
+
 		err = json.Unmarshal(verticesJSON, &vertices)
 		if err != nil {
 			return nil, fmt.Errorf("error unmarshaling vertices: %v", err)
 		}
+
 		h.Vertices = vertices
 
 		holds = append(holds, h)
@@ -187,6 +196,7 @@ func (d *DB) UpdateProblem(boardID uuid.UUID, problem *Problem, holds []ProblemH
 	if err == sql.ErrNoRows {
 		return ErrProblemNotFound
 	}
+
 	if err != nil {
 		return fmt.Errorf("error querying problem: %v", err)
 	}
@@ -199,7 +209,8 @@ func (d *DB) UpdateProblem(boardID uuid.UUID, problem *Problem, holds []ProblemH
 	if err != nil {
 		return fmt.Errorf("error beginning transaction: %v", err)
 	}
-	defer tx.Rollback()
+
+	defer tx.Rollback() //nolint:errcheck
 
 	// Update problem
 	_, err = tx.Exec(`

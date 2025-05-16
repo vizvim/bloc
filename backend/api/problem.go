@@ -37,10 +37,12 @@ func createProblemHandler(l *zerolog.Logger, datastore createProblemDatastore) h
 		logger := l.With().Str("handler", "createProblem").Logger()
 
 		params := httprouter.ParamsFromContext(r.Context())
+
 		boardID, err := uuid.Parse(params.ByName("board_id"))
 		if err != nil {
 			logger.Error().Err(err).Str("board_id", params.ByName("board_id")).Msg("invalid board ID")
 			errorResponse(w, http.StatusBadRequest, "invalid board ID")
+
 			return
 		}
 
@@ -50,10 +52,13 @@ func createProblemHandler(l *zerolog.Logger, datastore createProblemDatastore) h
 			if errors.Is(err, db.ErrBoardNotFound) {
 				logger.Error().Err(err).Msg("board not found")
 				errorResponse(w, http.StatusNotFound, "board not found")
+
 				return
 			}
+
 			logger.Error().Err(err).Msg("failed to get board")
 			errorResponse(w, http.StatusInternalServerError, "internal server error")
+
 			return
 		}
 
@@ -70,6 +75,7 @@ func createProblemHandler(l *zerolog.Logger, datastore createProblemDatastore) h
 		if err != nil {
 			logger.Error().Err(err).Msg("failed to decode request body")
 			errorResponse(w, http.StatusBadRequest, "invalid request body")
+
 			return
 		}
 
@@ -89,15 +95,16 @@ func createProblemHandler(l *zerolog.Logger, datastore createProblemDatastore) h
 			return
 		}
 
-		// Count start holds
 		startHolds := 0
+
 		for _, h := range input.Holds {
 			if h.Type == "start" {
 				startHolds++
 			}
 		}
-		if startHolds != 2 {
-			errorResponse(w, http.StatusBadRequest, "problem must have exactly 2 start holds")
+
+		if startHolds != 1 && startHolds != 2 {
+			errorResponse(w, http.StatusBadRequest, "problem must have exactly 1 or 2 start holds")
 			return
 		}
 
@@ -110,6 +117,7 @@ func createProblemHandler(l *zerolog.Logger, datastore createProblemDatastore) h
 		}
 
 		var problemHolds []db.ProblemHold
+
 		for _, h := range input.Holds {
 			problemHold := db.ProblemHold{
 				ID:        uuid.New(),
@@ -117,6 +125,7 @@ func createProblemHandler(l *zerolog.Logger, datastore createProblemDatastore) h
 				HoldID:    h.ID,
 				Type:      db.HoldType(h.Type),
 			}
+
 			problemHolds = append(problemHolds, problemHold)
 		}
 
@@ -124,6 +133,7 @@ func createProblemHandler(l *zerolog.Logger, datastore createProblemDatastore) h
 		if err != nil {
 			logger.Error().Err(err).Msg("failed to create problem")
 			errorResponse(w, http.StatusInternalServerError, "failed to create problem")
+
 			return
 		}
 
@@ -140,10 +150,12 @@ func getProblemsHandler(l *zerolog.Logger, datastore getProblemsDatastore) http.
 		logger := l.With().Str("handler", "getProblems").Logger()
 
 		params := httprouter.ParamsFromContext(r.Context())
+
 		boardID, err := uuid.Parse(params.ByName("board_id"))
 		if err != nil {
 			logger.Error().Err(err).Str("board_id", params.ByName("board_id")).Msg("invalid board ID")
 			errorResponse(w, http.StatusBadRequest, "invalid board ID")
+
 			return
 		}
 
@@ -153,10 +165,13 @@ func getProblemsHandler(l *zerolog.Logger, datastore getProblemsDatastore) http.
 			if errors.Is(err, db.ErrBoardNotFound) {
 				logger.Error().Err(err).Msg("board not found")
 				errorResponse(w, http.StatusNotFound, "board not found")
+
 				return
 			}
+
 			logger.Error().Err(err).Msg("failed to get board")
 			errorResponse(w, http.StatusInternalServerError, "internal server error")
+
 			return
 		}
 
@@ -164,6 +179,7 @@ func getProblemsHandler(l *zerolog.Logger, datastore getProblemsDatastore) http.
 		if err != nil {
 			logger.Error().Err(err).Msg("failed to get problems")
 			errorResponse(w, http.StatusInternalServerError, "failed to get problems")
+
 			return
 		}
 
@@ -180,10 +196,12 @@ func getProblemHandler(l *zerolog.Logger, datastore getProblemDatastore) http.Ha
 		logger := l.With().Str("handler", "getProblem").Logger()
 
 		params := httprouter.ParamsFromContext(r.Context())
+
 		boardID, err := uuid.Parse(params.ByName("board_id"))
 		if err != nil {
 			logger.Error().Err(err).Str("board_id", params.ByName("board_id")).Msg("invalid board ID")
 			errorResponse(w, http.StatusBadRequest, "invalid board ID")
+
 			return
 		}
 
@@ -191,6 +209,7 @@ func getProblemHandler(l *zerolog.Logger, datastore getProblemDatastore) http.Ha
 		if err != nil {
 			logger.Error().Err(err).Str("problem_id", params.ByName("problem_id")).Msg("invalid problem ID")
 			errorResponse(w, http.StatusBadRequest, "invalid problem ID")
+
 			return
 		}
 
@@ -200,10 +219,13 @@ func getProblemHandler(l *zerolog.Logger, datastore getProblemDatastore) http.Ha
 			if errors.Is(err, db.ErrBoardNotFound) {
 				logger.Error().Err(err).Msg("board not found")
 				errorResponse(w, http.StatusNotFound, "board not found")
+
 				return
 			}
+
 			logger.Error().Err(err).Msg("failed to get board")
 			errorResponse(w, http.StatusInternalServerError, "internal server error")
+
 			return
 		}
 
@@ -212,22 +234,24 @@ func getProblemHandler(l *zerolog.Logger, datastore getProblemDatastore) http.Ha
 			if errors.Is(err, db.ErrProblemNotFound) {
 				logger.Error().Err(err).Msg("problem not found")
 				errorResponse(w, http.StatusNotFound, "problem not found")
+
 				return
 			}
+
 			logger.Error().Err(err).Msg("failed to get problem")
 			errorResponse(w, http.StatusInternalServerError, "failed to get problem")
+
 			return
 		}
 
-		// Get the holds for this problem
 		holds, err := datastore.GetProblemHolds(problemID)
 		if err != nil {
 			logger.Error().Err(err).Msg("failed to get problem holds")
 			errorResponse(w, http.StatusInternalServerError, "failed to get problem holds")
+
 			return
 		}
 
-		// Create response with problem and its holds
 		response := struct {
 			*db.Problem
 			Holds []db.ProblemHold `json:"holds"`
@@ -249,10 +273,12 @@ func updateProblemHandler(l *zerolog.Logger, datastore updateProblemDatastore) h
 		logger := l.With().Str("handler", "updateProblem").Logger()
 
 		params := httprouter.ParamsFromContext(r.Context())
+
 		boardID, err := uuid.Parse(params.ByName("board_id"))
 		if err != nil {
 			logger.Error().Err(err).Str("board_id", params.ByName("board_id")).Msg("invalid board ID")
 			errorResponse(w, http.StatusBadRequest, "invalid board ID")
+
 			return
 		}
 
@@ -260,6 +286,7 @@ func updateProblemHandler(l *zerolog.Logger, datastore updateProblemDatastore) h
 		if err != nil {
 			logger.Error().Err(err).Str("problem_id", params.ByName("problem_id")).Msg("invalid problem ID")
 			errorResponse(w, http.StatusBadRequest, "invalid problem ID")
+
 			return
 		}
 
@@ -269,10 +296,13 @@ func updateProblemHandler(l *zerolog.Logger, datastore updateProblemDatastore) h
 			if errors.Is(err, db.ErrBoardNotFound) {
 				logger.Error().Err(err).Msg("board not found")
 				errorResponse(w, http.StatusNotFound, "board not found")
+
 				return
 			}
+
 			logger.Error().Err(err).Msg("failed to get board")
 			errorResponse(w, http.StatusInternalServerError, "internal server error")
+
 			return
 		}
 
@@ -289,10 +319,10 @@ func updateProblemHandler(l *zerolog.Logger, datastore updateProblemDatastore) h
 		if err != nil {
 			logger.Error().Err(err).Msg("failed to decode request body")
 			errorResponse(w, http.StatusBadRequest, "invalid request body")
+
 			return
 		}
 
-		// Validate input
 		if input.Name == "" {
 			errorResponse(w, http.StatusBadRequest, "name is required")
 			return
@@ -308,15 +338,16 @@ func updateProblemHandler(l *zerolog.Logger, datastore updateProblemDatastore) h
 			return
 		}
 
-		// Count start holds
 		startHolds := 0
+
 		for _, h := range input.Holds {
 			if h.Type == "start" {
 				startHolds++
 			}
 		}
-		if startHolds != 2 {
-			errorResponse(w, http.StatusBadRequest, "problem must have exactly 2 start holds")
+
+		if startHolds != 1 && startHolds != 2 {
+			errorResponse(w, http.StatusBadRequest, "problem must have exactly 1 or 2 start holds")
 			return
 		}
 
@@ -328,6 +359,7 @@ func updateProblemHandler(l *zerolog.Logger, datastore updateProblemDatastore) h
 		}
 
 		var problemHolds []db.ProblemHold
+
 		for _, h := range input.Holds {
 			problemHold := db.ProblemHold{
 				HoldID: h.ID,
@@ -341,15 +373,20 @@ func updateProblemHandler(l *zerolog.Logger, datastore updateProblemDatastore) h
 			if err.Error() == "cannot edit published problem" {
 				logger.Error().Err(err).Msg("cannot edit published problem")
 				errorResponse(w, http.StatusBadRequest, "cannot edit published problem")
+
 				return
 			}
+
 			if errors.Is(err, db.ErrProblemNotFound) {
 				logger.Error().Err(err).Msg("problem not found")
 				errorResponse(w, http.StatusNotFound, "problem not found")
+
 				return
 			}
+
 			logger.Error().Err(err).Msg("failed to update problem")
 			errorResponse(w, http.StatusInternalServerError, "failed to update problem")
+
 			return
 		}
 

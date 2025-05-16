@@ -30,6 +30,7 @@ func maxBodySize(next http.Handler, maxBytes int64) http.Handler {
 		if r.Method == http.MethodPost || r.Method == http.MethodPut || r.Method == http.MethodPatch {
 			r.Body = http.MaxBytesReader(w, r.Body, maxBytes)
 		}
+
 		next.ServeHTTP(w, r)
 	})
 }

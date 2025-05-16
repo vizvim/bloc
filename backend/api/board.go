@@ -162,6 +162,7 @@ func createHoldsOnBoardHandler(l *zerolog.Logger, datastore createHoldsOnBoardDa
 		if err != nil {
 			logger.Error().Err(err).Str("board_id", idStr).Msg("invalid board ID")
 			errorResponse(w, http.StatusBadRequest, "invalid board ID")
+
 			return
 		}
 
@@ -175,10 +176,12 @@ func createHoldsOnBoardHandler(l *zerolog.Logger, datastore createHoldsOnBoardDa
 		if err != nil {
 			logger.Error().Err(err).Msg("failed to read JSON")
 			errorResponse(w, http.StatusBadRequest, "invalid JSON")
+
 			return
 		}
 
 		var holds []*db.Hold
+
 		for _, h := range input.Holds {
 			hold := &db.Hold{
 				BoardID:  id,
@@ -189,6 +192,7 @@ func createHoldsOnBoardHandler(l *zerolog.Logger, datastore createHoldsOnBoardDa
 			if errs := hold.Validate(); errs != nil {
 				logger.Error().Any("validationErrors", errs).Msg("failed to validate hold")
 				errorResponse(w, http.StatusBadRequest, fmt.Sprintf("invalid hold: %v", errs))
+
 				return
 			}
 
@@ -201,10 +205,12 @@ func createHoldsOnBoardHandler(l *zerolog.Logger, datastore createHoldsOnBoardDa
 			case errors.Is(err, db.ErrBoardNotFound):
 				logger.Error().Err(err).Msg("board not found")
 				errorResponse(w, http.StatusNotFound, "board not found")
+
 				return
 			default:
 				logger.Error().Err(err).Msg("failed to create holds")
 				errorResponse(w, http.StatusInternalServerError, "unable to create holds")
+
 				return
 			}
 		}
@@ -213,6 +219,7 @@ func createHoldsOnBoardHandler(l *zerolog.Logger, datastore createHoldsOnBoardDa
 		if err != nil {
 			logger.Error().Err(err).Msg("failed to write JSON response")
 			errorResponse(w, http.StatusInternalServerError, "the server encountered an error while processing your request")
+
 			return
 		}
 	}
@@ -233,6 +240,7 @@ func getHoldsOnBoardHandler(l *zerolog.Logger, datastore getHoldsOnBoardDatastor
 		if err != nil {
 			logger.Error().Err(err).Str("board_id", idStr).Msg("invalid board ID")
 			errorResponse(w, http.StatusBadRequest, "invalid board ID")
+
 			return
 		}
 
@@ -240,6 +248,7 @@ func getHoldsOnBoardHandler(l *zerolog.Logger, datastore getHoldsOnBoardDatastor
 		if err != nil {
 			logger.Error().Err(err).Msg("failed to get holds")
 			errorResponse(w, http.StatusInternalServerError, "unable to get holds")
+
 			return
 		}
 
@@ -247,6 +256,7 @@ func getHoldsOnBoardHandler(l *zerolog.Logger, datastore getHoldsOnBoardDatastor
 		if err != nil {
 			logger.Error().Err(err).Msg("failed to write JSON response")
 			errorResponse(w, http.StatusInternalServerError, "the server encountered an error while processing your request")
+
 			return
 		}
 	}
@@ -267,6 +277,7 @@ func updateHoldsOnBoardHandler(l *zerolog.Logger, datastore updateHoldsOnBoardDa
 		if err != nil {
 			logger.Error().Err(err).Str("board_id", idStr).Msg("invalid board ID")
 			errorResponse(w, http.StatusBadRequest, "invalid board ID")
+
 			return
 		}
 
@@ -281,10 +292,12 @@ func updateHoldsOnBoardHandler(l *zerolog.Logger, datastore updateHoldsOnBoardDa
 		if err != nil {
 			logger.Error().Err(err).Msg("failed to read JSON")
 			errorResponse(w, http.StatusBadRequest, "invalid JSON")
+
 			return
 		}
 
 		var holds []*db.Hold
+
 		for _, h := range input.Holds {
 			hold := &db.Hold{
 				BoardID:  id,
@@ -298,6 +311,7 @@ func updateHoldsOnBoardHandler(l *zerolog.Logger, datastore updateHoldsOnBoardDa
 			if errs := hold.Validate(); errs != nil {
 				logger.Error().Any("validationErrors", errs).Msg("failed to validate hold")
 				errorResponse(w, http.StatusBadRequest, fmt.Sprintf("invalid hold: %v", errs))
+
 				return
 			}
 
@@ -310,10 +324,12 @@ func updateHoldsOnBoardHandler(l *zerolog.Logger, datastore updateHoldsOnBoardDa
 			case errors.Is(err, db.ErrBoardNotFound):
 				logger.Error().Err(err).Msg("board not found")
 				errorResponse(w, http.StatusNotFound, "board not found")
+
 				return
 			default:
 				logger.Error().Err(err).Msg("failed to update holds")
 				errorResponse(w, http.StatusInternalServerError, "unable to update holds")
+
 				return
 			}
 		}
@@ -322,6 +338,7 @@ func updateHoldsOnBoardHandler(l *zerolog.Logger, datastore updateHoldsOnBoardDa
 		if err != nil {
 			logger.Error().Err(err).Msg("failed to write JSON response")
 			errorResponse(w, http.StatusInternalServerError, "the server encountered an error while processing your request")
+
 			return
 		}
 	}
