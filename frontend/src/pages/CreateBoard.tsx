@@ -84,11 +84,12 @@ const CreateBoard = () => {
         duration: 5000,
         isClosable: true,
       })
-      navigate(`/board/${board.id}/holds`)
+      navigate(`/board/${board.id}/edit`)
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred'
       toast({
         title: 'Error',
-        description: 'Failed to create the board. Please try again.',
+        description: `Failed to create the board: ${errorMessage}`,
         status: 'error',
         duration: 5000,
         isClosable: true,

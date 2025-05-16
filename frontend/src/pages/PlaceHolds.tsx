@@ -30,9 +30,10 @@ const PlaceHolds = () => {
         const boardData = await getBoard(boardId)
         setBoard(boardData)
       } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Failed to load board data'
         toast({
           title: 'Error',
-          description: 'Failed to load board data',
+          description: errorMessage,
           status: 'error',
           duration: 5000,
           isClosable: true,
@@ -62,9 +63,10 @@ const PlaceHolds = () => {
       })
       navigate(`/board/${boardId}`)
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to save holds'
       toast({
         title: 'Error',
-        description: 'Failed to save holds',
+        description: errorMessage,
         status: 'error',
         duration: 5000,
         isClosable: true,

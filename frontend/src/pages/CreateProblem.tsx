@@ -72,10 +72,11 @@ const CreateProblem = () => {
           }
         }
       } catch (err) {
-        setError('Failed to load board data')
+        const errorMessage = err instanceof Error ? err.message : 'Failed to load board data'
+        setError(errorMessage)
         toast({
           title: 'Error',
-          description: 'Failed to load board data',
+          description: errorMessage,
           status: 'error',
           duration: 5000,
           isClosable: true,
@@ -182,9 +183,10 @@ const CreateProblem = () => {
 
       navigate(`/board/${boardId}/problem/${problem.id}`)
     } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to save problem'
       toast({
         title: 'Error',
-        description: 'Failed to save problem',
+        description: errorMessage,
         status: 'error',
         duration: 5000,
         isClosable: true,

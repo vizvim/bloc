@@ -8,6 +8,7 @@ import {
 } from '@chakra-ui/react'
 import { Stage, Layer, Image as KonvaImage, Circle, Line, Group } from 'react-konva'
 import type { Point } from '../api/client'
+import type { KonvaEventObject } from 'konva/lib/Node'
 
 interface Shape {
   id?: string
@@ -26,7 +27,7 @@ const HoldEditor = ({ imageData, initialShapes = [], onSave, onCancel }: HoldEdi
   const [shapes, setShapes] = useState<Shape[]>(initialShapes)
   const [currentShape, setCurrentShape] = useState<Point[]>([])
   const [selectedShapeIndex, setSelectedShapeIndex] = useState<number | null>(null)
-  const [selectedVertexIndex, setSelectedVertexIndex] = useState<number | null>(null)
+  const [, setSelectedVertexIndex] = useState<number | null>(null)
   const [imageElement, setImageElement] = useState<HTMLImageElement | null>(null)
   const [stageSize, setStageSize] = useState({ width: 0, height: 0 })
   const containerRef = useRef<HTMLDivElement>(null)
@@ -82,7 +83,7 @@ const HoldEditor = ({ imageData, initialShapes = [], onSave, onCancel }: HoldEdi
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [shapes, selectedShapeIndex])
 
-  const handleStageClick = (e: any) => {
+  const handleStageClick = (e: KonvaEventObject<MouseEvent>) => {
     // Allow clicks only on the stage background or image
     const targetName = e.target.getClassName()
     if (targetName !== 'Stage' && targetName !== 'Image') {
@@ -90,6 +91,7 @@ const HoldEditor = ({ imageData, initialShapes = [], onSave, onCancel }: HoldEdi
     }
 
     const stage = e.target.getStage()
+    if (!stage) return
     const position = stage.getPointerPosition()
     if (!position) return
 
@@ -123,20 +125,22 @@ const HoldEditor = ({ imageData, initialShapes = [], onSave, onCancel }: HoldEdi
     setCurrentShape([...currentShape, relativePosition])
   }
 
-  const handleShapeClick = (index: number, e: any) => {
+  const handleShapeClick = (index: number, e: KonvaEventObject<MouseEvent>) => {
     e.cancelBubble = true
     setSelectedShapeIndex(index)
   }
 
-  const handleVertexDragStart = (e: any) => {
+  const handleVertexDragStart = (e: KonvaEventObject<DragEvent>) => {
     e.cancelBubble = true
   }
 
-  const handleVertexDragMove = (shapeIndex: number, vertexIndex: number, e: any) => {
+  const handleVertexDragMove = (shapeIndex: number, vertexIndex: number, e: KonvaEventObject<DragEvent>) => {
     e.cancelBubble = true
 
     const stage = e.target.getStage()
+    if (!stage) return
     const pos = stage.getPointerPosition()
+    if (!pos) return
     
     const newPosition = {
       x: pos.x / stageSize.width,
@@ -158,28 +162,31 @@ const HoldEditor = ({ imageData, initialShapes = [], onSave, onCancel }: HoldEdi
     setShapes(newShapes)
   }
 
-  const handleVertexDragEnd = (e: any) => {
+  const handleVertexDragEnd = (e: KonvaEventObject<DragEvent>) => {
     e.cancelBubble = true
   }
 
-  const handleVertexClick = (e: any) => {
+  const handleVertexClick = (e: KonvaEventObject<MouseEvent>) => {
     e.cancelBubble = true
   }
 
-  const handleShapeDragStart = (e: any) => {
+  const handleShapeDragStart = (e: KonvaEventObject<DragEvent>) => {
     const stage = e.target.getStage()
+    if (!stage) return
     const pos = stage.getPointerPosition()
+    if (!pos) return
+    
     lastPointerPosition.current = {
       x: pos.x / stageSize.width,
       y: pos.y / stageSize.height
     }
   }
 
-  const handleShapeDragMove = (shapeIndex: number, e: any) => {
+  const handleShapeDragMove = (shapeIndex: number, e: KonvaEventObject<DragEvent>) => {
     const stage = e.target.getStage()
+    if (!stage) return
     const pos = stage.getPointerPosition()
-    
-    if (!lastPointerPosition.current) return
+    if (!pos || !lastPointerPosition.current) return
 
     const currentPos = {
       x: pos.x / stageSize.width,

@@ -30,9 +30,10 @@ const ProblemListPage = () => {
         setBoard(boardData)
         setProblems(problemsData)
       } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : 'Failed to load problems'
         toast({
           title: 'Error',
-          description: 'Failed to load problems',
+          description: errorMessage,
           status: 'error',
           duration: 5000,
           isClosable: true,

@@ -61,7 +61,7 @@ const BoardList = () => {
       <Box>
         <Heading mb={6}>Climbing Boards</Heading>
         <Text color="red.500" mb={4}>Error: {error}</Text>
-        <Link to="/board/create">
+        <Link to="/board/new">
           <Button colorScheme="blue">Create New Board</Button>
         </Link>
       </Box>

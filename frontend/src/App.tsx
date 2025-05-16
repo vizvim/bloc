@@ -7,7 +7,7 @@ import Navbar from './components/Navbar'
 import BoardList from './pages/BoardList'
 import BoardDetail from './pages/BoardDetail'
 import CreateBoard from './pages/CreateBoard'
-import PlaceHolds from './pages/PlaceHolds'
+// import PlaceHolds from './pages/PlaceHolds'
 import ProblemDetail from './pages/ProblemDetail'
 import EditHolds from './pages/EditHolds'
 import CreateProblem from './pages/CreateProblem'
@@ -28,7 +28,7 @@ function App() {
                 <Route path="/" element={<BoardList />} />
                 <Route path="/board/new" element={<CreateBoard />} />
                 <Route path="/board/:boardId" element={<BoardDetail />} />
-                <Route path="/board/:boardId/holds" element={<PlaceHolds />} />
+                {/* <Route path="/board/:boardId/edit" element={<PlaceHolds />} /> */}
                 <Route path="/board/:boardId/edit" element={<EditHolds />} />
                 <Route path="/board/:boardId/problems" element={<ProblemList />} />
                 <Route path="/board/:boardId/problem/new" element={<CreateProblem />} />

@@ -53,9 +53,10 @@ const ProblemDetail = () => {
           }
         }
       } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : 'Failed to load problem data'
         toast({
           title: 'Error',
-          description: 'Failed to load problem data',
+          description: errorMessage,
           status: 'error',
           duration: 5000,
           isClosable: true,

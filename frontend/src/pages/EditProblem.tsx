@@ -58,9 +58,11 @@ const EditProblem = () => {
         ])
 
         if (problemData.status !== 'DRAFT') {
+          const errorMsg = 'Can only edit problems in draft status'
+          setError(errorMsg)
           toast({
             title: 'Error',
-            description: 'Can only edit problems in draft status',
+            description: errorMsg,
             status: 'error',
             duration: 5000,
             isClosable: true,
@@ -106,10 +108,11 @@ const EditProblem = () => {
           }
         }
       } catch (err) {
-        setError('Failed to load problem data')
+        const errorMessage = err instanceof Error ? err.message : 'Failed to load problem data'
+        setError(errorMessage)
         toast({
           title: 'Error',
-          description: 'Failed to load problem data',
+          description: errorMessage,
           status: 'error',
           duration: 5000,
           isClosable: true,
@@ -237,9 +240,11 @@ const EditProblem = () => {
 
       navigate(`/board/${boardId}/problem/${problemId}`)
     } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to update problem'
+      setError(errorMessage)
       toast({
         title: 'Error',
-        description: 'Failed to save problem',
+        description: errorMessage,
         status: 'error',
         duration: 5000,
         isClosable: true,

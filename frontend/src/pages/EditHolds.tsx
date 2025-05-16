@@ -40,9 +40,10 @@ const EditHolds = () => {
         setHolds(holdsData)
       } catch (error) {
         console.error('Error in loadData:', error)
+        const errorMessage = error instanceof Error ? error.message : 'Failed to load board data'
         toast({
           title: 'Error',
-          description: 'Failed to load board data',
+          description: errorMessage,
           status: 'error',
           duration: 5000,
           isClosable: true,
@@ -73,9 +74,10 @@ const EditHolds = () => {
       })
       navigate(`/board/${boardId}`)
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to save holds'
       toast({
         title: 'Error',
-        description: 'Failed to save holds',
+        description: errorMessage,
         status: 'error',
         duration: 5000,
         isClosable: true,
