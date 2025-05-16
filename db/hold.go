@@ -1,6 +1,7 @@
 package db
 
 import (
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -8,11 +9,15 @@ import (
 	"github.com/vizvim/board/validator"
 )
 
+type Point struct {
+	X float64 `json:"x"`
+	Y float64 `json:"y"`
+}
+
 type Hold struct {
 	ID        uuid.UUID `json:"id"`
 	BoardID   uuid.UUID `json:"boardID"`
-	X         float64   `json:"x"`
-	Y         float64   `json:"y"`
+	Vertices  []Point   `json:"vertices"`
 	CreatedAt time.Time `json:"createdAt"`
 	UpdatedAt time.Time `json:"updatedAt"`
 }
@@ -21,8 +26,13 @@ func (h Hold) Validate() map[string]string {
 	v := validator.New()
 
 	v.Check(h.BoardID != uuid.Nil, "BoardID", "boardID must be provided")
-	v.Check(h.X != 0, "X", "X must be provided")
-	v.Check(h.Y != 0, "Y", "Y must be provided")
+	v.Check(len(h.Vertices) >= 3, "Vertices", "hold must have at least 3 vertices")
+
+	// Validate all vertices coordinates
+	for i, vertex := range h.Vertices {
+		v.Check(vertex.X >= 0 && vertex.X <= 1, fmt.Sprintf("Vertices[%d].X", i), "vertex X must be between 0 and 1")
+		v.Check(vertex.Y >= 0 && vertex.Y <= 1, fmt.Sprintf("Vertices[%d].Y", i), "vertex Y must be between 0 and 1")
+	}
 
 	if v.Valid() {
 		return nil
@@ -48,11 +58,11 @@ func (d *DB) CreateHolds(boardID uuid.UUID, holds []*Hold) error {
 		return fmt.Errorf("error beginning transaction: %v", err)
 	}
 
-	query := `INSERT INTO holds (board_id, x, y)
-		VALUES ($1, $2, $3)
-		RETURNING id, created_at, updated_at`
-
-	stmt, err := tx.Prepare(query)
+	stmt, err := tx.Prepare(`
+		INSERT INTO holds (board_id, vertices)
+		VALUES ($1, $2)
+		RETURNING id, created_at, updated_at
+	`)
 	if err != nil {
 		rollbackErr := tx.Rollback()
 		if rollbackErr != nil {
@@ -65,7 +75,20 @@ func (d *DB) CreateHolds(boardID uuid.UUID, holds []*Hold) error {
 	defer stmt.Close()
 
 	for _, hold := range holds {
-		err := stmt.QueryRow(boardID, hold.X, hold.Y).Scan(&hold.ID, &hold.CreatedAt, &hold.UpdatedAt)
+		// Convert vertices to JSON before storing
+		verticesJSON, err := json.Marshal(hold.Vertices)
+		if err != nil {
+			rollbackErr := tx.Rollback()
+			if rollbackErr != nil {
+				return fmt.Errorf("error rolling back transaction: %v", rollbackErr)
+			}
+			return fmt.Errorf("error marshaling vertices: %v", err)
+		}
+
+		err = stmt.QueryRow(
+			boardID,
+			verticesJSON,
+		).Scan(&hold.ID, &hold.CreatedAt, &hold.UpdatedAt)
 		if err != nil {
 			rollbackErr := tx.Rollback()
 			if rollbackErr != nil {
@@ -85,7 +108,7 @@ func (d *DB) CreateHolds(boardID uuid.UUID, holds []*Hold) error {
 }
 
 func (d *DB) GetHolds(boardID uuid.UUID) ([]Hold, error) {
-	query := `SELECT id, board_id, x, y, created_at, updated_at FROM holds WHERE board_id = $1`
+	query := `SELECT id, board_id, vertices, created_at, updated_at FROM holds WHERE board_id = $1 ORDER BY created_at`
 
 	rows, err := d.Query(query, boardID)
 	if err != nil {
@@ -97,10 +120,17 @@ func (d *DB) GetHolds(boardID uuid.UUID) ([]Hold, error) {
 
 	for rows.Next() {
 		var hold Hold
+		var verticesJSON []byte
 
-		err := rows.Scan(&hold.ID, &hold.BoardID, &hold.X, &hold.Y, &hold.CreatedAt, &hold.UpdatedAt)
+		err := rows.Scan(&hold.ID, &hold.BoardID, &verticesJSON, &hold.CreatedAt, &hold.UpdatedAt)
 		if err != nil {
 			return nil, fmt.Errorf("error scanning hold: %v", err)
+		}
+
+		// Parse vertices from JSON
+		err = json.Unmarshal(verticesJSON, &hold.Vertices)
+		if err != nil {
+			return nil, fmt.Errorf("error unmarshaling vertices: %v", err)
 		}
 
 		holds = append(holds, hold)
@@ -111,4 +141,9 @@ func (d *DB) GetHolds(boardID uuid.UUID) ([]Hold, error) {
 	}
 
 	return holds, nil
+}
+
+func (d *DB) DeleteHold(holdID uuid.UUID) error {
+	_, err := d.Exec(`DELETE FROM holds WHERE id = $1`, holdID)
+	return err
 }

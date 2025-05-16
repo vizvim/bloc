@@ -11,12 +11,17 @@ export interface Board {
   version: number
 }
 
-export interface Hold {
-  id: string
-  board_id: string
+export interface Point {
   x: number
   y: number
-  type: string
+}
+
+export interface Hold {
+  id: string
+  boardID: string
+  vertices: Point[]
+  createdAt?: string
+  updatedAt?: string
 }
 
 export interface Problem {
@@ -102,7 +107,7 @@ export const getBoard = async (boardId: string) => {
   }
 }
 
-export const createHolds = async (boardId: string, holds: Omit<Hold, 'id' | 'board_id'>[]) => {
+export const createHolds = async (boardId: string, holds: Omit<Hold, 'id' | 'boardID'>[]) => {
   const response = await api.post<HoldsResponse>(`/board/${boardId}/holds`, { holds })
   return response.data.holds
 }

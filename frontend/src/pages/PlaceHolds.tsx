@@ -11,12 +11,7 @@ import {
 } from '@chakra-ui/react'
 import { Stage, Layer, Image as KonvaImage, Circle, Line, Group } from 'react-konva'
 import { getBoard, createHolds } from '../api/client'
-import type { Board, Hold } from '../api/client'
-
-interface Point {
-  x: number
-  y: number
-}
+import type { Board, Hold, Point } from '../api/client'
 
 interface Shape {
   points: Point[]
@@ -248,15 +243,10 @@ const PlaceHolds = () => {
     if (!boardId || shapes.length === 0) return
 
     try {
-      // Convert shapes to individual hold positions
-      const holds = shapes.flatMap(shape => 
-        // For each shape, use its vertices as hold positions
-        shape.points.map(point => ({
-          x: point.x,
-          y: point.y,
-          type: 'standard'
-        }))
-      )
+      // Convert shapes to holds with vertices
+      const holds = shapes.map(shape => ({
+        vertices: shape.points
+      }))
       
       await createHolds(boardId, holds)
       toast({

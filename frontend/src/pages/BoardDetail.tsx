@@ -1,15 +1,13 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useParams } from 'react-router-dom'
 import {
   Box,
-  Grid,
   Heading,
   Text,
-  Button,
   useToast,
-  Image,
   VStack,
 } from '@chakra-ui/react'
+import { Stage, Layer, Image as KonvaImage, Line } from 'react-konva'
 import { getBoard, getHolds, type Board, type Hold } from '../api/client'
 
 const BoardDetail = () => {
@@ -18,6 +16,9 @@ const BoardDetail = () => {
   const [board, setBoard] = useState<Board | null>(null)
   const [holds, setHolds] = useState<Hold[]>([])
   const [error, setError] = useState<string | null>(null)
+  const [imageElement, setImageElement] = useState<HTMLImageElement | null>(null)
+  const [stageSize, setStageSize] = useState({ width: 0, height: 0 })
+  const containerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     const fetchData = async () => {
@@ -32,6 +33,21 @@ const BoardDetail = () => {
         console.log('Received holds data:', holdsData)
         setBoard(boardData)
         setHolds(holdsData)
+
+        // Load the image
+        const img = new Image()
+        img.src = `data:image/jpeg;base64,${boardData.image}`
+        img.onload = () => {
+          setImageElement(img)
+          if (containerRef.current) {
+            const containerWidth = containerRef.current.offsetWidth
+            const scale = containerWidth / img.width
+            setStageSize({
+              width: containerWidth,
+              height: img.height * scale,
+            })
+          }
+        }
       } catch (error) {
         console.error('Error fetching data:', error)
         setError(error instanceof Error ? error.message : 'Unknown error')
@@ -65,39 +81,36 @@ const BoardDetail = () => {
           </Text>
         </Box>
 
-        {board.image && (
-          <Box>
-            <Image
-              src={`data:image/jpeg;base64,${board.image}`}
-              alt={board.name}
-              borderRadius="md"
-              width="100%"
-              maxH="600px"
-              objectFit="contain"
-            />
-          </Box>
-        )}
-
-        <Box border="1px" borderColor="theme.gray" p={4} borderRadius="md">
-          <Text mb={4} fontWeight="bold">Hold Placements</Text>
-          <Grid
-            templateColumns="repeat(auto-fit, minmax(40px, 1fr))"
-            gap={2}
-            width="100%"
+        <Box ref={containerRef} borderRadius="md" overflow="hidden" border="1px" borderColor="theme.gray">
+          <Stage
+            width={stageSize.width}
+            height={stageSize.height}
           >
-            {holds.map((hold, index) => (
-              <Button
-                key={index}
-                size="sm"
-                variant="solid"
-                colorScheme="blue"
-                aspectRatio={1}
-                position="relative"
-                top={`${hold.y * 100}%`}
-                left={`${hold.x * 100}%`}
-              />
-            ))}
-          </Grid>
+            <Layer>
+              {imageElement && (
+                <KonvaImage
+                  image={imageElement}
+                  width={stageSize.width}
+                  height={stageSize.height}
+                />
+              )}
+              
+              {/* Draw all holds */}
+              {holds.map((hold, i) => (
+                <Line
+                  key={`hold-${i}`}
+                  points={hold.vertices.flatMap(p => [
+                    p.x * stageSize.width,
+                    p.y * stageSize.height
+                  ])}
+                  closed={true}
+                  fill="rgba(0, 255, 0, 0.2)"
+                  stroke="green"
+                  strokeWidth={2}
+                />
+              ))}
+            </Layer>
+          </Stage>
         </Box>
       </VStack>
     </Box>
