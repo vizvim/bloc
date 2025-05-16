@@ -85,7 +85,7 @@ const CreateBoard = () => {
         duration: 5000,
         isClosable: true,
       })
-      navigate(`/board/${board.id}`)
+      navigate(`/board/${board.id}/holds`)
     } catch (error) {
       toast({
         title: 'Error',
