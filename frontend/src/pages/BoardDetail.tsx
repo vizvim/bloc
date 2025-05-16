@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import {
   Box,
@@ -9,9 +9,9 @@ import {
   HStack,
   Button,
 } from '@chakra-ui/react'
-import { Stage, Layer, Image as KonvaImage, Line } from 'react-konva'
 import { getBoard, getHolds, getProblems, type Board, type Hold, type Problem } from '../api/client'
 import ProblemList from '../components/ProblemList'
+import BoardImage from '../components/BoardImage'
 
 const BoardDetail = () => {
   const { boardId } = useParams<{ boardId: string }>()
@@ -20,9 +20,6 @@ const BoardDetail = () => {
   const [holds, setHolds] = useState<Hold[]>([])
   const [problems, setProblems] = useState<Problem[]>([])
   const [error, setError] = useState<string | null>(null)
-  const [imageElement, setImageElement] = useState<HTMLImageElement | null>(null)
-  const [stageSize, setStageSize] = useState({ width: 0, height: 0 })
-  const containerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     const fetchData = async () => {
@@ -39,21 +36,6 @@ const BoardDetail = () => {
         setBoard(boardData)
         setHolds(holdsData)
         setProblems(problemsData)
-
-        // Load the image
-        const img = new Image()
-        img.src = `data:image/jpeg;base64,${boardData.image}`
-        img.onload = () => {
-          setImageElement(img)
-          if (containerRef.current) {
-            const containerWidth = containerRef.current.offsetWidth
-            const scale = containerWidth / img.width
-            setStageSize({
-              width: containerWidth,
-              height: img.height * scale,
-            })
-          }
-        }
       } catch (error) {
         console.error('Error fetching data:', error)
         setError(error instanceof Error ? error.message : 'Unknown error')
@@ -96,44 +78,21 @@ const BoardDetail = () => {
             <Link to={`/board/${boardId}/problems`}>
               <Button colorScheme="blue" variant="outline">View Problems</Button>
             </Link>
+            <Link to={`/board/${boardId}/problem/new`}>
+              <Button colorScheme="blue">Create Problem</Button>
+          </Link>
           </HStack>
         </HStack>
-        
 
-        <Box ref={containerRef} borderRadius="md" overflow="hidden" border="1px" borderColor="theme.gray">
-          <Stage
-            width={stageSize.width}
-            height={stageSize.height}
-          >
-            <Layer>
-              {imageElement && (
-                <KonvaImage
-                  image={imageElement}
-                  width={stageSize.width}
-                  height={stageSize.height}
-                />
-              )}
-              
-              {/* Draw all holds */}
-              {holds.map((hold, i) => (
-                <Line
-                  key={`hold-${i}`}
-                  points={hold.vertices.flatMap(p => [
-                    p.x * stageSize.width,
-                    p.y * stageSize.height
-                  ])}
-                  closed={true}
-                  fill="rgba(0, 255, 0, 0.2)"
-                  stroke="green"
-                  strokeWidth={2}
-                />
-              ))}
-            </Layer>
-          </Stage>
-        </Box>
+        <BoardImage
+          imageData={board.image}
+          holds={holds}
+          getHoldColor={() => 'rgba(0, 143, 0, 0.73)'}
+        />
 
         <Box>
-          <Heading size="md" mb={4}>Problems</Heading>
+          <Heading size="md" mb={4}>Classics
+          </Heading>
           <ProblemList
             boardId={boardId!}
             problems={problems}

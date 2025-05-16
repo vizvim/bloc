@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
   Box,
@@ -12,14 +12,10 @@ import {
   FormControl,
   FormLabel,
 } from '@chakra-ui/react'
-import { Stage, Layer, Image as KonvaImage, Line } from 'react-konva'
 import { getBoard, getHolds, createProblem, type Board, type Hold, type ProblemStatus } from '../api/client'
+import BoardImage, { type BoardHold } from '../components/BoardImage'
 
 type HoldType = 'start' | 'hand' | 'foot' | 'finish'
-
-interface ProblemHold extends Hold {
-  type?: HoldType
-}
 
 interface CreateProblemInput {
   name: string
@@ -38,12 +34,9 @@ const CreateProblem = () => {
   const navigate = useNavigate()
   const toast = useToast()
   const [board, setBoard] = useState<Board | null>(null)
-  const [holds, setHolds] = useState<ProblemHold[]>([])
+  const [holds, setHolds] = useState<BoardHold[]>([])
   const [name, setName] = useState('')
   const [error, setError] = useState<string | null>(null)
-  const [imageElement, setImageElement] = useState<HTMLImageElement | null>(null)
-  const [stageSize, setStageSize] = useState({ width: 0, height: 0 })
-  const containerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (!boardId) return
@@ -56,21 +49,6 @@ const CreateProblem = () => {
         ])
         setBoard(boardData)
         setHolds(holdsData.map(hold => ({ ...hold })))
-
-        // Load board image
-        const img = new Image()
-        img.src = `data:image/jpeg;base64,${boardData.image}`
-        img.onload = () => {
-          setImageElement(img)
-          if (containerRef.current) {
-            const containerWidth = containerRef.current.offsetWidth
-            const scale = containerWidth / img.width
-            setStageSize({
-              width: containerWidth,
-              height: img.height * scale
-            })
-          }
-        }
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'Failed to load board data'
         setError(errorMessage)
@@ -87,18 +65,39 @@ const CreateProblem = () => {
     loadBoardAndHolds()
   }, [boardId, toast])
 
-  const handleHoldClick = (hold: ProblemHold) => {
-    const startHolds = holds.filter(h => h.type === 'start')
+  const handleHoldClick = (hold: BoardHold) => {
+    const selectedHolds = holds.filter(h => h.type)
+    const startHolds = selectedHolds.filter(h => h.type === 'start')
+
     const updatedHolds = holds.map(h => {
       if (h.id === hold.id) {
-        // If hold is already selected, remove its type
+        // If this hold is already selected, cycle through types
         if (h.type) {
-          return { ...h, type: undefined }
+          switch (h.type) {
+            case 'start':
+              return { ...h, type: 'hand' as const }
+            case 'hand':
+              return { ...h, type: 'foot' as const }
+            case 'foot':
+              return { ...h, type: 'finish' as const }
+            case 'finish':
+              // If we don't have 2 start holds yet, cycle back to start
+              if (startHolds.length < 2) {
+                return { ...h, type: 'start' as const }
+              }
+              // Otherwise, unselect the hold
+              return { ...h, type: undefined }
+            default:
+              return { ...h, type: undefined }
+          }
         }
-        // If no type yet, determine the next type
+        
+        // For unselected holds:
+        // If we don't have 2 start holds yet, make it a start hold
         if (startHolds.length < 2) {
           return { ...h, type: 'start' as const }
         }
+        // Otherwise, make it a hand hold
         return { ...h, type: 'hand' as const }
       }
       return h
@@ -106,7 +105,7 @@ const CreateProblem = () => {
     setHolds(updatedHolds)
   }
 
-  const getHoldColor = (hold: ProblemHold) => {
+  const getHoldColor = (hold: BoardHold) => {
     if (!hold.type) return 'rgba(200, 200, 200, 0.5)' // Light grey for unselected
     switch (hold.type) {
       case 'start':
@@ -198,7 +197,7 @@ const CreateProblem = () => {
     return <Text color="red.500">{error}</Text>
   }
 
-  if (!board || !imageElement) {
+  if (!board) {
     return <Text>Loading...</Text>
   }
 
@@ -234,35 +233,19 @@ const CreateProblem = () => {
         </FormControl>
 
         <Text>
-          Click holds to select them. The first two holds will be marked as start holds (green).
-          Additional holds will be marked as hand holds (blue). You can click a hold again to
-          deselect it.
+          Click holds to select them. You can select up to two start holds (green) at any time.
+          Click a hold multiple times to cycle through: start (green) → hand (blue) → foot (yellow) → finish (red) → start (if less than 2 start holds) or unselected.
         </Text>
 
-        <Box ref={containerRef}>
-          <Stage width={stageSize.width} height={stageSize.height}>
-            <Layer>
-              <KonvaImage
-                image={imageElement}
-                width={stageSize.width}
-                height={stageSize.height}
-              />
-              {holds.map((hold) => (
-                <Line
-                  key={hold.id}
-                  points={hold.vertices.flatMap(v => [
-                    v.x * stageSize.width,
-                    v.y * stageSize.height
-                  ])}
-                  closed
-                  fill={getHoldColor(hold)}
-                  onClick={() => handleHoldClick(hold)}
-                  onTap={() => handleHoldClick(hold)}
-                />
-              ))}
-            </Layer>
-          </Stage>
-        </Box>
+        <BoardImage
+          imageData={board.image}
+          holds={holds.map(hold => ({
+            ...hold,
+            onClick: () => handleHoldClick(hold)
+          }))}
+          getHoldColor={getHoldColor}
+          uiOffset={300}
+        />
       </VStack>
     </Box>
   )

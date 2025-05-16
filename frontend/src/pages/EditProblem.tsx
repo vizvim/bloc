@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
   Box,
@@ -12,14 +12,10 @@ import {
   FormControl,
   FormLabel,
 } from '@chakra-ui/react'
-import { Stage, Layer, Image as KonvaImage, Line } from 'react-konva'
 import { getBoard, getHolds, getProblem, updateProblem, type Board, type Hold, type Problem, type ProblemStatus } from '../api/client'
+import BoardImage, { type BoardHold } from '../components/BoardImage'
 
 type HoldType = 'start' | 'hand' | 'foot' | 'finish'
-
-interface ProblemHold extends Hold {
-  type?: HoldType
-}
 
 interface UpdateProblemInput {
   name: string
@@ -39,12 +35,9 @@ const EditProblem = () => {
   const toast = useToast()
   const [board, setBoard] = useState<Board | null>(null)
   const [problem, setProblem] = useState<Problem | null>(null)
-  const [holds, setHolds] = useState<ProblemHold[]>([])
+  const [holds, setHolds] = useState<BoardHold[]>([])
   const [name, setName] = useState('')
   const [error, setError] = useState<string | null>(null)
-  const [imageElement, setImageElement] = useState<HTMLImageElement | null>(null)
-  const [stageSize, setStageSize] = useState({ width: 0, height: 0 })
-  const containerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (!boardId || !problemId) return
@@ -91,22 +84,6 @@ const EditProblem = () => {
         })
         console.log('Final mapped holds:', allHolds)
         setHolds(allHolds)
-
-        // Load board image
-        const img = new Image()
-        img.src = `data:image/jpeg;base64,${boardData.image}`
-        img.onload = () => {
-          setImageElement(img)
-          // Update stage size when image loads
-          if (containerRef.current) {
-            const containerWidth = containerRef.current.offsetWidth
-            const scale = containerWidth / img.width
-            setStageSize({
-              width: containerWidth,
-              height: img.height * scale
-            })
-          }
-        }
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'Failed to load problem data'
         setError(errorMessage)
@@ -123,28 +100,7 @@ const EditProblem = () => {
     loadData()
   }, [boardId, problemId, toast, navigate])
 
-  // Add resize observer to handle window resizing
-  useEffect(() => {
-    if (!imageElement || !containerRef.current) return
-
-    const updateDimensions = () => {
-      const containerWidth = containerRef.current?.offsetWidth || 0
-      const scale = containerWidth / imageElement.width
-      setStageSize({
-        width: containerWidth,
-        height: imageElement.height * scale
-      })
-    }
-
-    const resizeObserver = new ResizeObserver(updateDimensions)
-    resizeObserver.observe(containerRef.current)
-
-    return () => {
-      resizeObserver.disconnect()
-    }
-  }, [imageElement])
-
-  const handleHoldClick = (hold: ProblemHold) => {
+  const handleHoldClick = (hold: BoardHold) => {
     const startHolds = holds.filter(h => h.type === 'start')
     const updatedHolds = holds.map(h => {
       if (h.id === hold.id) {
@@ -163,7 +119,7 @@ const EditProblem = () => {
     setHolds(updatedHolds)
   }
 
-  const getHoldColor = (hold: ProblemHold) => {
+  const getHoldColor = (hold: BoardHold) => {
     if (!hold.type) return 'rgba(200, 200, 200, 0.5)' // Light grey for unselected
     switch (hold.type) {
       case 'start':
@@ -256,7 +212,7 @@ const EditProblem = () => {
     return <Text color="red.500">{error}</Text>
   }
 
-  if (!board || !problem || !imageElement) {
+  if (!board || !problem) {
     return <Text>Loading...</Text>
   }
 
@@ -297,30 +253,15 @@ const EditProblem = () => {
           deselect it.
         </Text>
 
-        <Box ref={containerRef} width="100%" maxW="100%" borderRadius="md" overflow="hidden" border="1px" borderColor="gray.200">
-          <Stage width={stageSize.width} height={stageSize.height}>
-            <Layer>
-              <KonvaImage
-                image={imageElement}
-                width={stageSize.width}
-                height={stageSize.height}
-              />
-              {holds.map((hold) => (
-                <Line
-                  key={hold.id}
-                  points={hold.vertices.flatMap(v => [
-                    v.x * stageSize.width,
-                    v.y * stageSize.height
-                  ])}
-                  closed
-                  fill={getHoldColor(hold)}
-                  onClick={() => handleHoldClick(hold)}
-                  onTap={() => handleHoldClick(hold)}
-                />
-              ))}
-            </Layer>
-          </Stage>
-        </Box>
+        <BoardImage
+          imageData={board.image}
+          holds={holds.map(hold => ({
+            ...hold,
+            onClick: () => handleHoldClick(hold)
+          }))}
+          getHoldColor={getHoldColor}
+          uiOffset={300}
+        />
       </VStack>
     </Box>
   )

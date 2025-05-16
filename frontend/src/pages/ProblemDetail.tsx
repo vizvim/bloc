@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import {
   Box,
@@ -10,8 +10,8 @@ import {
   Badge,
   useToast,
 } from '@chakra-ui/react'
-import { Stage, Layer, Image as KonvaImage, Line } from 'react-konva'
 import { getBoard, getProblem, type Board, type Problem, type Hold } from '../api/client'
+import BoardImage, { type BoardHold } from '../components/BoardImage'
 
 interface ProblemHold extends Hold {
   type: 'start' | 'hand' | 'foot' | 'finish'
@@ -22,9 +22,6 @@ const ProblemDetail = () => {
   const toast = useToast()
   const [board, setBoard] = useState<Board | null>(null)
   const [problem, setProblem] = useState<Problem | null>(null)
-  const [imageElement, setImageElement] = useState<HTMLImageElement | null>(null)
-  const [stageSize, setStageSize] = useState({ width: 0, height: 0 })
-  const containerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (!boardId || !problemId) return
@@ -37,21 +34,6 @@ const ProblemDetail = () => {
         ])
         setBoard(boardData)
         setProblem(problemData)
-
-        // Load board image
-        const img = new Image()
-        img.src = `data:image/jpeg;base64,${boardData.image}`
-        img.onload = () => {
-          setImageElement(img)
-          if (containerRef.current) {
-            const containerWidth = containerRef.current.offsetWidth
-            const scale = containerWidth / img.width
-            setStageSize({
-              width: containerWidth,
-              height: img.height * scale
-            })
-          }
-        }
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'Failed to load problem data'
         toast({
@@ -67,7 +49,7 @@ const ProblemDetail = () => {
     loadData()
   }, [boardId, problemId, toast])
 
-  const getHoldColor = (hold: ProblemHold) => {
+  const getHoldColor = (hold: BoardHold) => {
     switch (hold.type) {
       case 'start':
         return 'rgba(0, 255, 0, 0.5)' // Green
@@ -82,7 +64,7 @@ const ProblemDetail = () => {
     }
   }
 
-  if (!board || !problem || !imageElement) {
+  if (!board || !problem) {
     return <Text>Loading...</Text>
   }
 
@@ -113,30 +95,11 @@ const ProblemDetail = () => {
           </HStack>
         </HStack>
 
-        <Box ref={containerRef} borderRadius="md" overflow="hidden" border="1px" borderColor="gray.200">
-          <Stage width={stageSize.width} height={stageSize.height}>
-            <Layer>
-              <KonvaImage
-                image={imageElement}
-                width={stageSize.width}
-                height={stageSize.height}
-              />
-              {problem.holds.map((hold) => (
-                <Line
-                  key={hold.id}
-                  points={hold.vertices.flatMap(v => [
-                    v.x * stageSize.width,
-                    v.y * stageSize.height
-                  ])}
-                  closed
-                  fill={getHoldColor(hold as ProblemHold)}
-                  stroke="rgba(0, 0, 0, 0.3)"
-                  strokeWidth={1}
-                />
-              ))}
-            </Layer>
-          </Stage>
-        </Box>
+        <BoardImage
+          imageData={board.image}
+          holds={problem.holds as BoardHold[]}
+          getHoldColor={getHoldColor}
+        />
       </VStack>
     </Box>
   )
