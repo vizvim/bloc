@@ -35,6 +35,7 @@ const PlaceHolds = () => {
   const [imageElement, setImageElement] = useState<HTMLImageElement | null>(null)
   const [stageSize, setStageSize] = useState({ width: 0, height: 0 })
   const containerRef = useRef<HTMLDivElement>(null)
+  const lastPointerPosition = useRef<Point | null>(null)
 
   useEffect(() => {
     if (!boardId) return
@@ -71,6 +72,21 @@ const PlaceHolds = () => {
 
     loadBoard()
   }, [boardId, toast])
+
+  // Add keyboard event listener
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Backspace' && selectedShapeIndex !== null) {
+        // Remove the selected shape
+        const newShapes = shapes.filter((_, index) => index !== selectedShapeIndex);
+        setShapes(newShapes);
+        setSelectedShapeIndex(null);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [shapes, selectedShapeIndex]);
 
   const handleStageClick = (e: any) => {
     // Allow clicks only on the stage background or image
@@ -113,54 +129,104 @@ const PlaceHolds = () => {
     setCurrentShape([...currentShape, relativePosition])
   }
 
-  const handleShapeClick = (index: number) => {
-    setSelectedShapeIndex(index)
-    setSelectedVertexIndex(null)
+  const handleShapeClick = (index: number, e: any) => {
+    // Stop event from bubbling up to stage
+    e.cancelBubble = true;
+    setSelectedShapeIndex(index);
+  }
+
+  const handleVertexDragStart = (e: any) => {
+    // Stop event from bubbling up to the shape group
+    e.cancelBubble = true;
   }
 
   const handleVertexDragMove = (shapeIndex: number, vertexIndex: number, e: any) => {
-    const stage = e.target.getStage()
-    const position = {
-      x: e.target.x() / stageSize.width,
-      y: e.target.y() / stageSize.height,
+    // Stop event from bubbling up to the shape group
+    e.cancelBubble = true;
+
+    // Get absolute position from the event
+    const stage = e.target.getStage();
+    const pos = stage.getPointerPosition();
+    
+    // Convert to relative coordinates
+    const newPosition = {
+      x: pos.x / stageSize.width,
+      y: pos.y / stageSize.height,
     }
 
-    const newShapes = [...shapes]
-    const shape = { ...newShapes[shapeIndex] }
-    const newPoints = [...shape.points]
-    newPoints[vertexIndex] = position
+    const newShapes = [...shapes];
+    const shape = { ...newShapes[shapeIndex] };
+    const newPoints = [...shape.points];
+    newPoints[vertexIndex] = newPosition;
 
     // If this is the first or last point (which should be the same for closed shapes)
     // update both to maintain the closed shape
     if (shape.isClosed && (vertexIndex === 0 || vertexIndex === newPoints.length - 1)) {
-      newPoints[0] = position
-      newPoints[newPoints.length - 1] = position
+      newPoints[0] = newPosition;
+      newPoints[newPoints.length - 1] = newPosition;
     }
 
-    shape.points = newPoints
-    newShapes[shapeIndex] = shape
-    setShapes(newShapes)
+    shape.points = newPoints;
+    newShapes[shapeIndex] = shape;
+    setShapes(newShapes);
+  }
+
+  const handleVertexDragEnd = (e: any) => {
+    // Stop event from bubbling up to the shape group
+    e.cancelBubble = true;
+  }
+
+  const handleVertexClick = (e: any) => {
+    // Stop event from bubbling up to the shape group
+    e.cancelBubble = true;
+  }
+
+  const handleShapeDragStart = (e: any) => {
+    const stage = e.target.getStage()
+    const pos = stage.getPointerPosition()
+    lastPointerPosition.current = {
+      x: pos.x / stageSize.width,
+      y: pos.y / stageSize.height
+    }
   }
 
   const handleShapeDragMove = (shapeIndex: number, e: any) => {
     const stage = e.target.getStage()
-    const group = e.target
+    const pos = stage.getPointerPosition()
+    
+    if (!lastPointerPosition.current) return
+
+    const currentPos = {
+      x: pos.x / stageSize.width,
+      y: pos.y / stageSize.height
+    }
+
+    // Calculate the actual movement delta
+    const dx = currentPos.x - lastPointerPosition.current.x
+    const dy = currentPos.y - lastPointerPosition.current.y
     
     const newShapes = [...shapes]
     const shape = { ...newShapes[shapeIndex] }
     
-    // Calculate the relative movement
+    // Move all points by the drag delta
     const newPoints = shape.points.map(point => ({
-      x: point.x + group.x() / stageSize.width,
-      y: point.y + group.y() / stageSize.height
+      x: point.x + dx,
+      y: point.y + dy
     }))
     
     shape.points = newPoints
     newShapes[shapeIndex] = shape
     setShapes(newShapes)
     
-    // Reset group position to prevent accumulation
-    group.position({ x: 0, y: 0 })
+    // Update the last position
+    lastPointerPosition.current = currentPos
+
+    // Keep the group at origin
+    e.target.position({ x: 0, y: 0 })
+  }
+
+  const handleShapeDragEnd = () => {
+    lastPointerPosition.current = null
   }
 
   const handleUndo = () => {
@@ -212,6 +278,14 @@ const PlaceHolds = () => {
     }
   }
 
+  const handleDeleteShape = () => {
+    if (selectedShapeIndex !== null) {
+      const newShapes = shapes.filter((_, index) => index !== selectedShapeIndex);
+      setShapes(newShapes);
+      setSelectedShapeIndex(null);
+    }
+  };
+
   return (
     <Box>
       <VStack spacing={6} align="stretch">
@@ -220,6 +294,7 @@ const PlaceHolds = () => {
           <Text color="theme.gray">
             Click to place points for each hold outline. To complete a shape, click back on its first point.
             Click a shape to select it, then drag vertices to adjust or drag the shape to move it.
+            Press Backspace or use the Delete button to remove a selected shape. Click the background to deselect.
             Use Undo to remove points or Reset to start over.
           </Text>
         </Box>
@@ -244,8 +319,10 @@ const PlaceHolds = () => {
                 <Group
                   key={`shape-${i}`}
                   draggable={selectedShapeIndex === i}
+                  onDragStart={handleShapeDragStart}
                   onDragMove={(e) => handleShapeDragMove(i, e)}
-                  onClick={() => handleShapeClick(i)}
+                  onDragEnd={handleShapeDragEnd}
+                  onClick={(e) => handleShapeClick(i, e)}
                 >
                   <Line
                     points={shape.points.flatMap(p => [
@@ -257,9 +334,10 @@ const PlaceHolds = () => {
                     stroke={selectedShapeIndex === i ? "blue" : "green"}
                     strokeWidth={selectedShapeIndex === i ? 3 : 2}
                   />
+                  {/* Show vertices only for selected shape */}
                   {selectedShapeIndex === i && shape.points.map((point, j) => (
                     <Circle
-                      key={`vertex-${i}-${j}`}
+                      key={`vertex-${j}`}
                       x={point.x * stageSize.width}
                       y={point.y * stageSize.height}
                       radius={6}
@@ -267,7 +345,10 @@ const PlaceHolds = () => {
                       stroke="blue"
                       strokeWidth={2}
                       draggable
+                      onDragStart={handleVertexDragStart}
                       onDragMove={(e) => handleVertexDragMove(i, j, e)}
+                      onDragEnd={handleVertexDragEnd}
+                      onClick={handleVertexClick}
                     />
                   ))}
                 </Group>
@@ -315,6 +396,14 @@ const PlaceHolds = () => {
               colorScheme="red"
             >
               Reset
+            </Button>
+            <Button
+              onClick={handleDeleteShape}
+              isDisabled={selectedShapeIndex === null}
+              variant="outline"
+              colorScheme="red"
+            >
+              Delete Hold
             </Button>
           </HStack>
           <Button
