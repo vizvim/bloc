@@ -9,11 +9,12 @@ on:
       - main
 
 env:
-  GO_VERSION: '1.23.5'
+  GO_VERSION: '1.24.3'
+  NODE_VERSION: '20.x'
 
 jobs:
-  lint:
-    name: 🧹 Lint
+  backend-lint:
+    name: 🧹 Backend Lint
     runs-on: ubuntu-latest
 
     steps:
@@ -36,16 +37,18 @@ jobs:
             ${{ runner.os }}-go-${{ env.GO_VERSION }}-modules-
 
       - name: 📦 Install dependencies
+        working-directory: ./backend
         run: go mod download
 
       - name: 🔍 Run golangci-lint
-        uses: golangci/golangci-lint-action@v6
+        uses: golangci/golangci-lint-action@v7
         with:
-          version: v1.60
+          version: v2.1.6
           args: --timeout 5m
+          working-directory: ./backend
 
-  test:
-    name: ✅ Test
+  backend-test:
+    name: ✅ Backend Test
     runs-on: ubuntu-latest
 
     steps:
@@ -68,7 +71,55 @@ jobs:
             ${{ runner.os }}-go-${{ env.GO_VERSION }}-modules-
 
       - name: 📦 Install dependencies
+        working-directory: ./backend
         run: go mod download
 
       - name: 🧪 Run tests
-        run: go test ./...
+        working-directory: ./backend
+        run: go test ./... -v -race
+
+  frontend-lint:
+    name: 🧹 Frontend Lint
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🛠️ Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: './frontend/package-lock.json'
+
+      - name: 📦 Install dependencies
+        working-directory: ./frontend
+        run: npm ci
+
+      - name: 🔍 Run ESLint
+        working-directory: ./frontend
+        run: npm run lint
+
+  # frontend-test:
+  #   name: ✅ Frontend Test
+  #   runs-on: ubuntu-latest
+
+  #   steps:
+  #     - name: 📥 Checkout code
+  #       uses: actions/checkout@v4
+
+  #     - name: 🛠️ Set up Node.js
+  #       uses: actions/setup-node@v4
+  #       with:
+  #         node-version: ${{ env.NODE_VERSION }}
+  #         cache: 'npm'
+  #         cache-dependency-path: './frontend/package-lock.json'
+
+  #     - name: 📦 Install dependencies
+  #       working-directory: ./frontend
+  #       run: npm ci
+
+  #     - name: 🧪 Run tests
+  #       working-directory: ./frontend
+  #       run: npm test
