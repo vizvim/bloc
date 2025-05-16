@@ -12,7 +12,7 @@ import {
   FormControl,
   FormLabel,
 } from '@chakra-ui/react'
-import { getBoard, getHolds, createProblem, type Board, type Hold, type ProblemStatus } from '../api/client'
+import { getBoard, getHolds, createProblem, type Board,  type ProblemStatus } from '../api/client'
 import BoardImage, { type BoardHold } from '../components/BoardImage'
 
 type HoldType = 'start' | 'hand' | 'foot' | 'finish'

@@ -10,12 +10,8 @@ import {
   Badge,
   useToast,
 } from '@chakra-ui/react'
-import { getBoard, getProblem, type Board, type Problem, type Hold } from '../api/client'
+import { getBoard, getProblem, type Board, type Problem } from '../api/client'
 import BoardImage, { type BoardHold } from '../components/BoardImage'
-
-interface ProblemHold extends Hold {
-  type: 'start' | 'hand' | 'foot' | 'finish'
-}
 
 const ProblemDetail = () => {
   const { boardId, problemId } = useParams<{ boardId: string; problemId: string }>()

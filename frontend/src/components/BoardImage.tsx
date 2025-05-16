@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import { Box } from '@chakra-ui/react'
 import { Stage, Layer, Image as KonvaImage, Line } from 'react-konva'
 import type { Hold } from '../api/client'
@@ -25,29 +25,7 @@ const BoardImage = ({
   const [stageSize, setStageSize] = useState({ width: 0, height: 0 })
   const containerRef = useRef<HTMLDivElement>(null)
 
-  useEffect(() => {
-    const img = new Image()
-    img.src = `data:image/jpeg;base64,${imageData}`
-    img.onload = () => {
-      setImageElement(img)
-      updateDimensions(img)
-    }
-  }, [imageData])
-
-  useEffect(() => {
-    if (!imageElement || !containerRef.current) return
-
-    const resizeObserver = new ResizeObserver(() => {
-      updateDimensions(imageElement)
-    })
-    resizeObserver.observe(containerRef.current)
-
-    return () => {
-      resizeObserver.disconnect()
-    }
-  }, [imageElement])
-
-  const updateDimensions = (img: HTMLImageElement) => {
+  const updateDimensions = useCallback((img: HTMLImageElement) => {
     if (!containerRef.current) return
 
     const containerWidth = containerRef.current.offsetWidth
@@ -62,7 +40,29 @@ const BoardImage = ({
       width: img.width * scale,
       height: img.height * scale
     })
-  }
+  }, [uiOffset])
+
+  useEffect(() => {
+    const img = new Image()
+    img.src = `data:image/jpeg;base64,${imageData}`
+    img.onload = () => {
+      setImageElement(img)
+      updateDimensions(img)
+    }
+  }, [imageData, updateDimensions])
+
+  useEffect(() => {
+    if (!imageElement || !containerRef.current) return
+
+    const resizeObserver = new ResizeObserver(() => {
+      updateDimensions(imageElement)
+    })
+    resizeObserver.observe(containerRef.current)
+
+    return () => {
+      resizeObserver.disconnect()
+    }
+  }, [imageElement, updateDimensions])
 
   return (
     <Box 
