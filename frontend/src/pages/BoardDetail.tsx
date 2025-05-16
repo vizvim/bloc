@@ -1,11 +1,13 @@
 import { useEffect, useState, useRef } from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams, Link } from 'react-router-dom'
 import {
   Box,
   Heading,
   Text,
   useToast,
   VStack,
+  HStack,
+  Button,
 } from '@chakra-ui/react'
 import { Stage, Layer, Image as KonvaImage, Line } from 'react-konva'
 import { getBoard, getHolds, type Board, type Hold } from '../api/client'
@@ -74,12 +76,17 @@ const BoardDetail = () => {
   return (
     <Box>
       <VStack align="stretch" spacing={6}>
-        <Box>
-          <Heading mb={4}>{board.name}</Heading>
-          <Text color="theme.gray" fontSize="sm">
-            Created: {new Date(board.createdAt).toLocaleDateString()}
-          </Text>
-        </Box>
+        <HStack justify="space-between">
+          <Box>
+            <Heading mb={4}>{board.name}</Heading>
+            <Text color="theme.gray" fontSize="sm">
+              Created: {new Date(board.createdAt).toLocaleDateString()}
+            </Text>
+          </Box>
+          <Link to={`/board/${boardId}/edit`}>
+            <Button colorScheme="blue">Edit Holds</Button>
+          </Link>
+        </HStack>
 
         <Box ref={containerRef} borderRadius="md" overflow="hidden" border="1px" borderColor="theme.gray">
           <Stage

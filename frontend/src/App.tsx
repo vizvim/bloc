@@ -9,6 +9,7 @@ import BoardDetail from './pages/BoardDetail'
 import CreateBoard from './pages/CreateBoard'
 import PlaceHolds from './pages/PlaceHolds'
 import ProblemDetail from './pages/ProblemDetail'
+import EditHolds from './pages/EditHolds'
 
 const queryClient = new QueryClient()
 
@@ -25,6 +26,7 @@ function App() {
                 <Route path="/board/new" element={<CreateBoard />} />
                 <Route path="/board/:boardId" element={<BoardDetail />} />
                 <Route path="/board/:boardId/holds" element={<PlaceHolds />} />
+                <Route path="/board/:boardId/edit" element={<EditHolds />} />
                 <Route path="/board/:boardId/problem/:problemId" element={<ProblemDetail />} />
               </Routes>
             </Box>
