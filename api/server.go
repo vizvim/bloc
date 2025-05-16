@@ -81,9 +81,11 @@ func NewServer(l *zerolog.Logger, db *db.DB, opts ...ServerOption) *Server {
 		if r.Header.Get("Access-Control-Request-Method") != "" {
 			// Set CORS headers for preflight requests
 			header := w.Header()
-			header.Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-			header.Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, Authorization")
+			header.Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
+			header.Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, Authorization, X-Requested-With")
 			header.Set("Access-Control-Allow-Origin", "*")
+			header.Set("Access-Control-Max-Age", "3600")
+			header.Set("Access-Control-Allow-Credentials", "true")
 		}
 		w.WriteHeader(http.StatusNoContent)
 	})
@@ -93,8 +95,11 @@ func NewServer(l *zerolog.Logger, db *db.DB, opts ...ServerOption) *Server {
 	router.HandlerFunc(http.MethodGet, "/v1/board/:board_id", getBoardHandler(l, db))
 	router.HandlerFunc(http.MethodPost, "/v1/board/:board_id/holds", createHoldsOnBoardHandler(l, db))
 	router.HandlerFunc(http.MethodGet, "/v1/board/:board_id/holds", getHoldsOnBoardHandler(l, db))
+	router.HandlerFunc(http.MethodPatch, "/v1/board/:board_id/holds", updateHoldsOnBoardHandler(l, db))
 	router.HandlerFunc(http.MethodPost, "/v1/board/:board_id/problem", createProblemHandler(l, db))
+	router.HandlerFunc(http.MethodGet, "/v1/board/:board_id/problems", getProblemsHandler(l, db))
 	router.HandlerFunc(http.MethodGet, "/v1/board/:board_id/problem/:problem_id", getProblemHandler(l, db))
+	router.HandlerFunc(http.MethodPatch, "/v1/board/:board_id/problem/:problem_id", updateProblemHandler(l, db))
 	router.HandlerFunc(http.MethodPost, "/v1/board/:board_id/problem/:problem_id/attempt", createAttemptHandler(l, db))
 	router.HandlerFunc(http.MethodGet, "/v1/board/:board_id/problem/:problem_id/attempt", getAttemptHandler(l, db))
 

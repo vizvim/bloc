@@ -10,13 +10,15 @@ import {
   Button,
 } from '@chakra-ui/react'
 import { Stage, Layer, Image as KonvaImage, Line } from 'react-konva'
-import { getBoard, getHolds, type Board, type Hold } from '../api/client'
+import { getBoard, getHolds, getProblems, type Board, type Hold, type Problem } from '../api/client'
+import ProblemList from '../components/ProblemList'
 
 const BoardDetail = () => {
   const { boardId } = useParams<{ boardId: string }>()
   const toast = useToast()
   const [board, setBoard] = useState<Board | null>(null)
   const [holds, setHolds] = useState<Hold[]>([])
+  const [problems, setProblems] = useState<Problem[]>([])
   const [error, setError] = useState<string | null>(null)
   const [imageElement, setImageElement] = useState<HTMLImageElement | null>(null)
   const [stageSize, setStageSize] = useState({ width: 0, height: 0 })
@@ -27,14 +29,16 @@ const BoardDetail = () => {
       if (!boardId) return
       try {
         console.log('Fetching board data for ID:', boardId)
-        const [boardData, holdsData] = await Promise.all([
+        const [boardData, holdsData, problemsData] = await Promise.all([
           getBoard(boardId),
-          getHolds(boardId)
+          getHolds(boardId),
+          getProblems(boardId)
         ])
         console.log('Received board data:', boardData)
         console.log('Received holds data:', holdsData)
         setBoard(boardData)
         setHolds(holdsData)
+        setProblems(problemsData)
 
         // Load the image
         const img = new Image()
@@ -83,10 +87,18 @@ const BoardDetail = () => {
               Created: {new Date(board.createdAt).toLocaleDateString()}
             </Text>
           </Box>
-          <Link to={`/board/${boardId}/edit`}>
-            <Button colorScheme="blue">Edit Holds</Button>
-          </Link>
+          <HStack>
+            <Link to={`/board/${boardId}/edit`}>
+              <Button colorScheme="blue" variant="outline">Edit Holds</Button>
+            </Link>
+          </HStack>
+          <HStack>
+            <Link to={`/board/${boardId}/problems`}>
+              <Button colorScheme="blue" variant="outline">View Problems</Button>
+            </Link>
+          </HStack>
         </HStack>
+        
 
         <Box ref={containerRef} borderRadius="md" overflow="hidden" border="1px" borderColor="theme.gray">
           <Stage
@@ -118,6 +130,15 @@ const BoardDetail = () => {
               ))}
             </Layer>
           </Stage>
+        </Box>
+
+        <Box>
+          <Heading size="md" mb={4}>Problems</Heading>
+          <ProblemList
+            boardId={boardId!}
+            problems={problems}
+            showCreateButton={false}
+          />
         </Box>
       </VStack>
     </Box>

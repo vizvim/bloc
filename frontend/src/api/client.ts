@@ -20,17 +20,21 @@ export interface Hold {
   id: string
   boardID: string
   vertices: Point[]
+  type?: 'start' | 'hand' | 'foot' | 'finish'
   createdAt?: string
   updatedAt?: string
+  holdID?: string  // Used when the hold is part of a problem
 }
+
+export type ProblemStatus = 'DRAFT' | 'PUBLISHED'
 
 export interface Problem {
   id: string
   board_id: string
   name: string
-  grade: string
   holds: Hold[]
   created_at: string
+  status: ProblemStatus
 }
 
 export interface Attempt {
@@ -39,6 +43,11 @@ export interface Attempt {
   completed: boolean
   attempts: number
   created_at: string
+}
+
+export interface HoldUpdate {
+  id?: string  // Optional - if present, update existing hold; if absent, create new hold
+  vertices: Point[]
 }
 
 interface BoardsResponse {
@@ -63,6 +72,10 @@ interface AttemptsResponse {
 
 interface AttemptResponse {
   attempt: Attempt
+}
+
+interface ProblemsResponse {
+  problems: Problem[]
 }
 
 const api = axios.create({
@@ -112,6 +125,11 @@ export const createHolds = async (boardId: string, holds: Omit<Hold, 'id' | 'boa
   return response.data.holds
 }
 
+export const updateHolds = async (boardId: string, holds: HoldUpdate[]) => {
+  const response = await api.patch<HoldsResponse>(`/board/${boardId}/holds`, { holds })
+  return response.data.holds
+}
+
 export const getHolds = async (boardId: string) => {
   const response = await api.get<HoldsResponse>(`/board/${boardId}/holds`)
   return response.data.holds || []
@@ -140,4 +158,14 @@ export const getAttempts = async (boardId: string, problemId: string) => {
 export const getAllBoards = async () => {
   const response = await api.get<BoardsResponse>('/boards')
   return response.data.boards
+}
+
+export const getProblems = async (boardId: string) => {
+  const response = await api.get<ProblemsResponse>(`/board/${boardId}/problems`)
+  return response.data.problems || []
+}
+
+export const updateProblem = async (boardId: string, problemId: string, data: Omit<Problem, 'id' | 'created_at'>) => {
+  const response = await api.patch<ProblemResponse>(`/board/${boardId}/problem/${problemId}`, data)
+  return response.data.problem
 }

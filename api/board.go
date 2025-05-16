@@ -78,7 +78,7 @@ func createBoardHandler(l *zerolog.Logger, datastore createBoardDatastore) http.
 }
 
 type getBoardDatastore interface {
-	GetBoard(id uuid.UUID) (db.Board, error)
+	GetBoard(uuid.UUID) (*db.Board, error)
 }
 
 func getBoardHandler(l *zerolog.Logger, datastore getBoardDatastore) http.HandlerFunc {
@@ -244,6 +244,81 @@ func getHoldsOnBoardHandler(l *zerolog.Logger, datastore getHoldsOnBoardDatastor
 		}
 
 		err = writeJSON(w, http.StatusOK, envelope{"holds": holds, "boardID": id}, nil)
+		if err != nil {
+			logger.Error().Err(err).Msg("failed to write JSON response")
+			errorResponse(w, http.StatusInternalServerError, "the server encountered an error while processing your request")
+			return
+		}
+	}
+}
+
+type updateHoldsOnBoardDatastore interface {
+	UpdateHolds(boardID uuid.UUID, holds []*db.Hold) error
+}
+
+func updateHoldsOnBoardHandler(l *zerolog.Logger, datastore updateHoldsOnBoardDatastore) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		logger := l.With().Str("requestMethod", r.Method).Str("url", r.URL.String()).Logger()
+
+		params := httprouter.ParamsFromContext(r.Context())
+		idStr := params.ByName("board_id")
+
+		id, err := uuid.Parse(idStr)
+		if err != nil {
+			logger.Error().Err(err).Str("board_id", idStr).Msg("invalid board ID")
+			errorResponse(w, http.StatusBadRequest, "invalid board ID")
+			return
+		}
+
+		var input struct {
+			Holds []struct {
+				ID       *uuid.UUID `json:"id,omitempty"`
+				Vertices []db.Point `json:"vertices"`
+			} `json:"holds"`
+		}
+
+		err = json.NewDecoder(r.Body).Decode(&input)
+		if err != nil {
+			logger.Error().Err(err).Msg("failed to read JSON")
+			errorResponse(w, http.StatusBadRequest, "invalid JSON")
+			return
+		}
+
+		var holds []*db.Hold
+		for _, h := range input.Holds {
+			hold := &db.Hold{
+				BoardID:  id,
+				Vertices: h.Vertices,
+			}
+			if h.ID != nil {
+				hold.ID = *h.ID
+			}
+
+			// Validate the hold
+			if errs := hold.Validate(); errs != nil {
+				logger.Error().Any("validationErrors", errs).Msg("failed to validate hold")
+				errorResponse(w, http.StatusBadRequest, fmt.Sprintf("invalid hold: %v", errs))
+				return
+			}
+
+			holds = append(holds, hold)
+		}
+
+		err = datastore.UpdateHolds(id, holds)
+		if err != nil {
+			switch {
+			case errors.Is(err, db.ErrBoardNotFound):
+				logger.Error().Err(err).Msg("board not found")
+				errorResponse(w, http.StatusNotFound, "board not found")
+				return
+			default:
+				logger.Error().Err(err).Msg("failed to update holds")
+				errorResponse(w, http.StatusInternalServerError, "unable to update holds")
+				return
+			}
+		}
+
+		err = writeJSON(w, http.StatusOK, envelope{"holds": holds}, nil)
 		if err != nil {
 			logger.Error().Err(err).Msg("failed to write JSON response")
 			errorResponse(w, http.StatusInternalServerError, "the server encountered an error while processing your request")

@@ -7,7 +7,7 @@ const Navbar = () => {
       <Flex maxW="container.xl" mx="auto" align="center" justify="space-between">
         <Link to="/">
           <Button variant="ghost" color="tokyoNight.fg" _hover={{ bg: 'tokyoNight.bgLighter' }}>
-            Climbing Board
+            Bloc 
           </Button>
         </Link>
         <Link to="/board/new">

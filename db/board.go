@@ -3,15 +3,12 @@ package db
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"fmt"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/vizvim/board/validator"
 )
-
-var ErrBoardNotFound = errors.New("board not found")
 
 type Board struct {
 	ID        uuid.UUID `json:"id"`
@@ -51,21 +48,22 @@ func (d *DB) CreateBoard(ctx context.Context, b *Board) error {
 	return nil
 }
 
-func (d *DB) GetBoard(id uuid.UUID) (Board, error) {
-	query := `SELECT id, name, image, created_at, updated_at, version FROM boards WHERE id = $1`
-
+func (d *DB) GetBoard(id uuid.UUID) (*Board, error) {
 	var board Board
+	err := d.QueryRow(`
+		SELECT id, name, image, created_at, updated_at, version
+		FROM boards
+		WHERE id = $1
+	`, id).Scan(&board.ID, &board.Name, &board.Image, &board.CreatedAt, &board.UpdatedAt, &board.Version)
 
-	err := d.QueryRow(query, id).Scan(&board.ID, &board.Name, &board.Image, &board.CreatedAt, &board.UpdatedAt, &board.Version)
+	if err == sql.ErrNoRows {
+		return nil, ErrBoardNotFound
+	}
 	if err != nil {
-		if err == sql.ErrNoRows {
-			return Board{}, ErrBoardNotFound
-		}
-
-		return Board{}, fmt.Errorf("error getting board: %v", err)
+		return nil, fmt.Errorf("error querying board: %v", err)
 	}
 
-	return board, nil
+	return &board, nil
 }
 
 func (d *DB) GetAllBoards(ctx context.Context) ([]Board, error) {

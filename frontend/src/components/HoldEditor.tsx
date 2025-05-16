@@ -10,6 +10,7 @@ import { Stage, Layer, Image as KonvaImage, Circle, Line, Group } from 'react-ko
 import type { Point } from '../api/client'
 
 interface Shape {
+  id?: string
   points: Point[]
   isClosed: boolean
 }

@@ -9,7 +9,6 @@ import {
   VStack,
   Image,
   useToast,
-  Text,
 } from '@chakra-ui/react'
 import { createBoard } from '../api/client'
 

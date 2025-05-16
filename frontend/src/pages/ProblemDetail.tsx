@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { useEffect, useState, useRef } from 'react'
+import { useParams, Link } from 'react-router-dom'
 import {
   Box,
   Heading,
@@ -7,27 +7,52 @@ import {
   VStack,
   HStack,
   Button,
+  Badge,
   useToast,
 } from '@chakra-ui/react'
-import { getProblem, getAttempts, createAttempt, type Problem, type Attempt } from '../api/client'
+import { Stage, Layer, Image as KonvaImage, Line } from 'react-konva'
+import { getBoard, getProblem, type Board, type Problem, type Hold } from '../api/client'
+
+interface ProblemHold extends Hold {
+  type: 'start' | 'hand' | 'foot' | 'finish'
+}
 
 const ProblemDetail = () => {
   const { boardId, problemId } = useParams<{ boardId: string; problemId: string }>()
   const toast = useToast()
+  const [board, setBoard] = useState<Board | null>(null)
   const [problem, setProblem] = useState<Problem | null>(null)
-  const [attempts, setAttempts] = useState<Attempt[]>([])
+  const [imageElement, setImageElement] = useState<HTMLImageElement | null>(null)
+  const [stageSize, setStageSize] = useState({ width: 0, height: 0 })
+  const containerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    const fetchData = async () => {
-      if (!boardId || !problemId) return
+    if (!boardId || !problemId) return
+
+    const loadData = async () => {
       try {
-        const [problemData, attemptsData] = await Promise.all([
-          getProblem(boardId, problemId),
-          getAttempts(boardId, problemId)
+        const [boardData, problemData] = await Promise.all([
+          getBoard(boardId),
+          getProblem(boardId, problemId)
         ])
+        setBoard(boardData)
         setProblem(problemData)
-        setAttempts(attemptsData)
-      } catch (error) {
+
+        // Load board image
+        const img = new Image()
+        img.src = `data:image/jpeg;base64,${boardData.image}`
+        img.onload = () => {
+          setImageElement(img)
+          if (containerRef.current) {
+            const containerWidth = containerRef.current.offsetWidth
+            const scale = containerWidth / img.width
+            setStageSize({
+              width: containerWidth,
+              height: img.height * scale
+            })
+          }
+        }
+      } catch (err) {
         toast({
           title: 'Error',
           description: 'Failed to load problem data',
@@ -37,87 +62,79 @@ const ProblemDetail = () => {
         })
       }
     }
-    fetchData()
+
+    loadData()
   }, [boardId, problemId, toast])
 
-  const handleNewAttempt = async (completed: boolean) => {
-    if (!boardId || !problemId) return
-    try {
-      const newAttempt = await createAttempt(boardId, problemId, {
-        completed,
-        attempts: 1,
-        problem_id: problemId
-      })
-      setAttempts([...attempts, newAttempt])
-      toast({
-        title: completed ? 'Success!' : 'Keep trying!',
-        description: completed ? 'Problem completed!' : 'Attempt recorded',
-        status: completed ? 'success' : 'info',
-        duration: 3000,
-        isClosable: true,
-      })
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'Failed to record attempt',
-        status: 'error',
-        duration: 5000,
-        isClosable: true,
-      })
+  const getHoldColor = (hold: ProblemHold) => {
+    switch (hold.type) {
+      case 'start':
+        return 'rgba(0, 255, 0, 0.5)' // Green
+      case 'hand':
+        return 'rgba(0, 0, 255, 0.5)' // Blue
+      case 'foot':
+        return 'rgba(255, 255, 0, 0.5)' // Yellow
+      case 'finish':
+        return 'rgba(255, 0, 0, 0.5)' // Red
+      default:
+        return 'rgba(200, 200, 200, 0.5)'
     }
   }
 
-  if (!problem) {
+  if (!board || !problem || !imageElement) {
     return <Text>Loading...</Text>
   }
 
   return (
     <Box>
-      <VStack align="stretch" spacing={6}>
-        <Box>
-          <Heading size="lg">{problem.name}</Heading>
-          <Text>Grade: {problem.grade}</Text>
-        </Box>
-
-        <Box>
-          <Heading size="md" mb={4}>Record Attempt</Heading>
-          <HStack spacing={4}>
-            <Button
-              colorScheme="green"
-              onClick={() => handleNewAttempt(true)}
-            >
-              Mark as Complete
-            </Button>
-            <Button
-              colorScheme="yellow"
-              onClick={() => handleNewAttempt(false)}
-            >
-              Record Attempt
-            </Button>
+      <VStack spacing={6} align="stretch">
+        <HStack justify="space-between">
+          <Box>
+            <Heading size="lg">{problem.name}</Heading>
+            <HStack spacing={4} mt={2}>
+              <Text color="gray.500">
+                Created: {new Date(problem.created_at).toLocaleDateString()}
+              </Text>
+              <Badge colorScheme={problem.status === 'PUBLISHED' ? 'green' : 'blue'}>
+                {problem.status}
+              </Badge>
+            </HStack>
+          </Box>
+          <HStack>
+            {problem.status === 'DRAFT' && (
+              <Link to={`/board/${boardId}/problem/${problemId}/edit`}>
+                <Button colorScheme="blue">Edit Problem</Button>
+              </Link>
+            )}
+            <Link to={`/board/${boardId}/problems`}>
+              <Button variant="outline">Back to Problems</Button>
+            </Link>
           </HStack>
-        </Box>
+        </HStack>
 
-        <Box>
-          <Heading size="md" mb={4}>Attempt History</Heading>
-          <VStack align="stretch" spacing={2}>
-            {attempts.map((attempt, index) => (
-              <Box
-                key={attempt.id}
-                p={4}
-                borderWidth={1}
-                borderRadius="md"
-                borderColor={attempt.completed ? "green.200" : "yellow.200"}
-                bg={attempt.completed ? "green.50" : "yellow.50"}
-              >
-                <Text>
-                  Attempt #{attempts.length - index}: {attempt.completed ? "Completed" : "Attempted"}
-                </Text>
-                <Text fontSize="sm" color="gray.600">
-                  {new Date(attempt.created_at).toLocaleDateString()}
-                </Text>
-              </Box>
-            ))}
-          </VStack>
+        <Box ref={containerRef} borderRadius="md" overflow="hidden" border="1px" borderColor="gray.200">
+          <Stage width={stageSize.width} height={stageSize.height}>
+            <Layer>
+              <KonvaImage
+                image={imageElement}
+                width={stageSize.width}
+                height={stageSize.height}
+              />
+              {problem.holds.map((hold) => (
+                <Line
+                  key={hold.id}
+                  points={hold.vertices.flatMap(v => [
+                    v.x * stageSize.width,
+                    v.y * stageSize.height
+                  ])}
+                  closed
+                  fill={getHoldColor(hold as ProblemHold)}
+                  stroke="rgba(0, 0, 0, 0.3)"
+                  strokeWidth={1}
+                />
+              ))}
+            </Layer>
+          </Stage>
         </Box>
       </VStack>
     </Box>

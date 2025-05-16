@@ -6,9 +6,15 @@ import {
   Text,
   useToast,
 } from '@chakra-ui/react'
-import { getBoard, createHolds } from '../api/client'
-import type { Board } from '../api/client'
+import { getBoard, updateHolds } from '../api/client'
+import type { Board, Point } from '../api/client'
 import HoldEditor from '../components/HoldEditor'
+
+interface Shape {
+  id?: string
+  points: Point[]
+  isClosed: boolean
+}
 
 const PlaceHolds = () => {
   const { boardId } = useParams<{ boardId: string }>()
@@ -37,15 +43,16 @@ const PlaceHolds = () => {
     loadBoard()
   }, [boardId, toast])
 
-  const handleSave = async (shapes: { points: { x: number; y: number }[] }[]) => {
+  const handleSave = async (shapes: Shape[]) => {
     if (!boardId) return
 
     try {
+      // For new holds, we don't need to pass IDs
       const holds = shapes.map(shape => ({
         vertices: shape.points
       }))
       
-      await createHolds(boardId, holds)
+      await updateHolds(boardId, holds)
       toast({
         title: 'Success',
         description: 'Holds saved successfully',

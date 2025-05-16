@@ -147,3 +147,84 @@ func (d *DB) DeleteHold(holdID uuid.UUID) error {
 	_, err := d.Exec(`DELETE FROM holds WHERE id = $1`, holdID)
 	return err
 }
+
+func (d *DB) UpdateHolds(boardID uuid.UUID, holds []*Hold) error {
+	var exists bool
+
+	err := d.QueryRow(`SELECT EXISTS(SELECT 1 FROM boards WHERE id = $1)`, boardID).Scan(&exists)
+	if err != nil {
+		return fmt.Errorf("error checking if board exists: %v", err)
+	}
+
+	if !exists {
+		return ErrBoardNotFound
+	}
+
+	tx, err := d.Begin()
+	if err != nil {
+		return fmt.Errorf("error beginning transaction: %v", err)
+	}
+
+	// Prepare statements for both update and insert operations
+	updateStmt, err := tx.Prepare(`
+		UPDATE holds 
+		SET vertices = $1, updated_at = NOW()
+		WHERE id = $2 AND board_id = $3
+		RETURNING id, created_at, updated_at
+	`)
+	if err != nil {
+		tx.Rollback()
+		return fmt.Errorf("error preparing update statement: %v", err)
+	}
+	defer updateStmt.Close()
+
+	insertStmt, err := tx.Prepare(`
+		INSERT INTO holds (board_id, vertices)
+		VALUES ($1, $2)
+		RETURNING id, created_at, updated_at
+	`)
+	if err != nil {
+		tx.Rollback()
+		return fmt.Errorf("error preparing insert statement: %v", err)
+	}
+	defer insertStmt.Close()
+
+	for _, hold := range holds {
+		// Convert vertices to JSON before storing
+		verticesJSON, err := json.Marshal(hold.Vertices)
+		if err != nil {
+			tx.Rollback()
+			return fmt.Errorf("error marshaling vertices: %v", err)
+		}
+
+		if hold.ID != uuid.Nil {
+			// Update existing hold
+			err = updateStmt.QueryRow(
+				verticesJSON,
+				hold.ID,
+				boardID,
+			).Scan(&hold.ID, &hold.CreatedAt, &hold.UpdatedAt)
+			if err != nil {
+				tx.Rollback()
+				return fmt.Errorf("error updating hold: %v", err)
+			}
+		} else {
+			// Create new hold
+			err = insertStmt.QueryRow(
+				boardID,
+				verticesJSON,
+			).Scan(&hold.ID, &hold.CreatedAt, &hold.UpdatedAt)
+			if err != nil {
+				tx.Rollback()
+				return fmt.Errorf("error creating hold: %v", err)
+			}
+		}
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return fmt.Errorf("error committing transaction: %v", err)
+	}
+
+	return nil
+}
