@@ -23,12 +23,12 @@ confirm:
 ## run/api: run the api application
 .PHONY: run/api
 run/api:
-	go run main.go
+	cd backend && go run main.go
 
 ## run/api/hot: run the api application with hot reload
 .PHONY: run/api/hot
 run/api/hot:
-	air
+	cd backend && air
 
 ## db/start: start the database container
 .PHONY: db/start
@@ -53,19 +53,19 @@ db/psql:
 .PHONY: db/migrations/new
 db/migrations/new:
 	@echo 'Creating migration files for ${name}...'
-	migrate create -seq -ext=.sql -dir=./migrations ${name}
+	migrate create -seq -ext=.sql -dir=./backend/migrations ${name}
 
 ## db/migrations/up: apply all up database migrations
 .PHONY: db/migrations/up
 db/migrations/up:
 	@echo 'Running up migrations...'
-	migrate -path ./migrations -database "postgres://user:password@localhost:5432/bloc?sslmode=disable" up
+	migrate -path ./backend/migrations -database "postgres://user:password@localhost:5432/bloc?sslmode=disable" up
 
 ## db/migrations/down: apply all down database migrations
 .PHONY: db/migrations/down
 db/migrations/down: confirm
 	@echo 'Running down migrations...'
-	migrate -path ./migrations -database "postgres://user:password@localhost:5432/bloc?sslmode=disable" down
+	migrate -path ./backend/migrations -database "postgres://user:password@localhost:5432/bloc?sslmode=disable" down
 
 ## dev: start the development environment
 .PHONY: dev
